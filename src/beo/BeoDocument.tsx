@@ -21,6 +21,13 @@ function Row({ label, value }: { label: string; value?: string }) {
 export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Settings }>(function BeoDocument({ beo, settings }, ref) {
   const food = beo.lines.filter((l) => l.kind === 'set' || l.kind === 'item' || l.kind === 'addon')
   const services = beo.lines.filter((l) => l.kind === 'service')
+  const sum = (ls: BeoLine[]) => ls.reduce((t, l) => t + lineAmount(l), 0)
+  const foodTotal = sum(food)
+  const serviceTotal = sum(services)
+  const perTable = beo.seating.tables > 0 ? foodTotal / beo.seating.tables : 0
+  // section subtotals are shown when the BEO has both food and services (and per-table price whenever there are tables)
+  const showFoodTotal = food.length > 0 && (services.length > 0 || perTable > 0)
+  const showServiceTotal = services.length > 0 && food.length > 0
   const foc = beo.lines.filter((l) => l.kind === 'foc' && !l.declined)
   const issued = tsToIso(beo.confirmedAt) ?? tsToIso(beo.updatedAt) ?? todayIso()
   const s = beo.seating
@@ -104,9 +111,23 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
           <tr><th className="c" style={{ width: 40 }}>ลำดับ</th><th>รายการอาหาร เครื่องดื่ม และการบริการ</th><th className="n" style={{ width: 60 }}>จำนวน</th><th className="c" style={{ width: 56 }}>หน่วย</th><th className="n" style={{ width: 92 }}>ราคา</th><th className="n" style={{ width: 104 }}>รวม</th></tr>
         </thead>
         <tbody>
-          {food.length > 0 && <tr className="bd-group"><td colSpan={6}>อาหารและเครื่องดื่ม</td></tr>}
+          {food.length > 0 && (
+            <tr className="bd-group">
+              <td colSpan={showFoodTotal ? 3 : 6}>อาหารและเครื่องดื่ม</td>
+              {showFoodTotal && (
+                <td colSpan={3} className="n bd-sectotal">
+                  รวม {money(foodTotal)} บาท{perTable > 0 && <span className="bd-pertable"> (โต๊ะละ {money(perTable).replace(/\.00$/, '')} บาท)</span>}
+                </td>
+              )}
+            </tr>
+          )}
           {food.map((l) => lineRow(l))}
-          {services.length > 0 && <tr className="bd-group"><td colSpan={6}>บริการ</td></tr>}
+          {services.length > 0 && (
+            <tr className="bd-group">
+              <td colSpan={showServiceTotal ? 3 : 6}>บริการ</td>
+              {showServiceTotal && <td colSpan={3} className="n bd-sectotal">รวม {money(serviceTotal)} บาท</td>}
+            </tr>
+          )}
           {services.map((l) => lineRow(l))}
           {foc.length > 0 && <tr className="bd-group gold"><td colSpan={6}>ของแถม (Free of Charge)</td></tr>}
           {foc.map((l) => lineRow(l, false))}
