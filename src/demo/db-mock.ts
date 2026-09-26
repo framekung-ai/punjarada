@@ -132,3 +132,4 @@ export async function listRevisions(id: string) {
 export async function listPendingBeos() {
   return Object.values(structuredClone(store.beos)).filter((b) => b.status === 'pending').map(out).sort((a, b) => a.event.date.localeCompare(b.event.date))
 }
+export async function deleteCustomer(id: string) { delete store.customers[id]; persist() }

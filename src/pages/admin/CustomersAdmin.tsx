@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Phone } from 'lucide-react'
+import { Phone, Trash2 } from 'lucide-react'
 import type { Beo, CustomerRecord } from '../../lib/types'
-import { listBeosByPhone, listCustomers } from '../../lib/db'
+import { deleteCustomer, listBeosByPhone, listCustomers } from '../../lib/db'
 import { money, phoneFormat, thaiDate } from '../../lib/thai'
-import { Empty, errorText, Sheet, Spinner, StatusBadge } from '../../components/ui'
+import { Empty, errorText, Sheet, Spinner, StatusBadge, useToast } from '../../components/ui'
 
 /** Admin: find a customer by name / phone / organisation, call back, and see their events. */
 export function CustomersAdmin() {
   const navigate = useNavigate()
+  const toast = useToast()
+  const [deleting, setDeleting] = useState(false)
   const [list, setList] = useState<CustomerRecord[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [q, setQ] = useState('')
@@ -31,6 +33,25 @@ export function CustomersAdmin() {
     setOpen(c)
     setBeos(null)
     listBeosByPhone(c.phone).then(setBeos).catch(() => setBeos([]))
+  }
+
+  const remove = async (c: CustomerRecord) => {
+    const n = beos?.length ?? 0
+    const msg = `ลบข้อมูลลูกค้า “${c.name}” (${phoneFormat(c.phone)}) ออกจากรายชื่อ?`
+      + (n ? `\n\nเอกสาร BEO ${n} ใบของลูกค้านี้จะไม่ถูกลบ และยังเปิดดูได้ตามปกติ` : '')
+      + '\n\nถ้าลูกค้าคนนี้จองงานใหม่ ระบบจะบันทึกรายชื่อกลับมาอัตโนมัติ'
+    if (!window.confirm(msg)) return
+    setDeleting(true)
+    try {
+      await deleteCustomer(c.id ?? c.phone)
+      setList((l) => (l ?? []).filter((x) => (x.id ?? x.phone) !== (c.id ?? c.phone)))
+      setOpen(null)
+      toast('ลบข้อมูลลูกค้าแล้ว')
+    } catch (e) {
+      toast(`ลบไม่สำเร็จ: ${errorText(e)}`)
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const tel = (p: string) => `tel:${p.replace(/\D/g, '')}`
@@ -58,7 +79,12 @@ export function CustomersAdmin() {
         </div>
       )}
 
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.name}>
+      <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.name}
+        footer={open && (
+          <button className="btn danger" disabled={deleting || !beos} onClick={() => void remove(open)}>
+            <Trash2 size={17} aria-hidden /> {deleting ? 'กำลังลบ…' : 'ลบข้อมูลลูกค้า'}
+          </button>
+        )}>
         {open && (
           <>
             <div className="stack" style={{ gap: 4 }}>

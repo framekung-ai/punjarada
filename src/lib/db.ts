@@ -160,6 +160,11 @@ export async function listCustomers(max = 500): Promise<CustomerRecord[]> {
   return snap.docs.map((d) => ({ ...(d.data() as CustomerRecord), id: d.id }))
 }
 
+/** Admin only (rules). Removes the directory entry; BEO documents keep their own copy of the customer details. */
+export async function deleteCustomer(id: string) {
+  await deleteDoc(doc(db, 'customers', id))
+}
+
 /** Admin: every BEO of one customer (by phone digits). */
 export async function listBeosByPhone(phone: string): Promise<Beo[]> {
   const snap = await getDocs(query(collection(db, 'beos'), where('customer.phone', '==', phoneKey(phone))))
