@@ -4,7 +4,7 @@ import type { Beo, BeoLine } from '../../lib/types'
 import { useAuth } from '../../lib/auth'
 import { useReadyCatalog } from '../../lib/catalog'
 import { priceBeo } from '../../lib/pricing'
-import { confirmBeo, createBeo, findCustomer, getBeo, updateBeo } from '../../lib/db'
+import { submitBeo, createBeo, findCustomer, getBeo, updateBeo } from '../../lib/db'
 import { money } from '../../lib/thai'
 import { errorText, Spinner, useToast } from '../../components/ui'
 import { copyAsNew, emptyBeo, STEPS, validateStep, type StepErrors } from './model'
@@ -37,7 +37,7 @@ export function Wizard() {
     if (id) {
       getBeo(id).then((b) => {
         if (!b) { setLoadErr('ไม่พบเอกสาร'); return }
-        if (!isAdmin && b.status !== 'draft') { setLoadErr('เอกสารที่ยืนยันแล้วแก้ไขได้เฉพาะ Admin'); return }
+        if (!isAdmin && b.status !== 'draft' && b.status !== 'pending') { setLoadErr('เอกสารที่ยืนยันแล้วแก้ไขได้เฉพาะ Admin'); return }
         setBeoRaw(b)
         setStep(b.lines.length ? 4 : 1)
         findCustomer(b.customer.phone).then((c) => setRegular(!!c && c.beoCount > 0)).catch(() => {})
@@ -112,8 +112,8 @@ export function Wizard() {
     }
     setSaving(true)
     try {
-      const res = await confirmBeo(beoId, pricedBeo, { uid: user.uid, name: user.displayName })
-      toast(`บันทึกแล้ว เลขที่ ${res.docNo}`)
+      const res = await submitBeo(beoId, pricedBeo, { uid: user.uid, name: user.displayName, isAdmin })
+      toast(res.status === 'pending' ? `ส่งให้ Admin ยืนยันแล้ว — เลขที่ ${res.docNo}` : `บันทึกแล้ว เลขที่ ${res.docNo}`)
       navigate(`/beo/${res.id}`, { replace: true })
     } catch (e) {
       toast(`ยืนยันไม่สำเร็จ: ${errorText(e)}`)
@@ -122,6 +122,9 @@ export function Wizard() {
     }
   }
 
+  const submitLabel = isAdmin
+    ? (beo.status === 'draft' || beo.status === 'pending' ? 'ยืนยันงาน' : 'บันทึกการแก้ไข')
+    : (beo.status === 'pending' ? 'บันทึกและส่งใหม่' : 'ส่งให้ Admin ยืนยัน')
   const stepProps = { beo, setBeo, catalog, errors }
   const lineCount = priced.lines.filter((l) => l.kind !== 'foc').length
 
@@ -163,14 +166,14 @@ export function Wizard() {
           {step >= 4 ? (
             <button className="cartbar" onClick={() => { if (step === 4) setCartOpen(true) }}>
               <div className="grow">
-                <div className="small muted">{lineCount} รายการ{priced.totals.focValue > 0 || priced.lines.some((l) => l.kind === 'foc') ? ' · มีของแถม' : ''}</div>
-                <div className="total num">{money(priced.totals.grandTotal)} ฿</div>
+                <div className="small muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lineCount} รายการ · {step === 4 ? 'ก่อน VAT' : beo.applyVat === false ? 'ไม่คิด VAT' : 'รวม VAT 7%'}{priced.lines.some((l) => l.kind === 'foc') ? ' · มีของแถม' : ''}</div>
+                <div className="total num">{money(step === 4 ? priced.totals.subtotal : priced.totals.grandTotal)}</div>
               </div>
             </button>
           ) : <div className="grow" />}
           {step < 5
             ? <button className="btn primary" onClick={() => void go(step + 1)}>ถัดไป</button>
-            : <button className="btn primary" disabled={saving} onClick={() => void confirm()}>{saving ? 'กำลังบันทึก…' : isDraft ? 'ยืนยันและบันทึก' : 'บันทึกการแก้ไข'}</button>}
+            : <button className="btn primary" disabled={saving} onClick={() => void confirm()}>{saving ? 'กำลังบันทึก…' : submitLabel}</button>}
         </div>
       </div>
     </div>

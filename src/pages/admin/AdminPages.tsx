@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import type { Beo } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
-import { listBeosBetween } from '../../lib/db'
+import { listBeosBetween, listPendingBeos } from '../../lib/db'
 import { money, num, THAI_MONTHS, thaiDate, timeRange, todayIso } from '../../lib/thai'
 import { Empty, errorText, Spinner, StatusBadge } from '../../components/ui'
 import { CategoriesAdmin, MenuAdmin, ServicesAdmin } from './CatalogAdmin'
@@ -10,6 +10,7 @@ import { SetsAdmin } from './SetsAdmin'
 import { FocAdmin, SettingsAdmin, TemplatesAdmin } from './RulesAdmin'
 import { UsersAdmin } from './UsersAdmin'
 import { SetupAdmin } from './SetupAdmin'
+import { CustomersAdmin } from './CustomersAdmin'
 
 function NeedCatalog({ children }: { children: ReactNode }) {
   const { catalog } = useCatalog()
@@ -22,6 +23,7 @@ export default function AdminPages() {
     <Routes>
       <Route index element={<NeedCatalog><Dashboard /></NeedCatalog>} />
       <Route path="beos" element={<BeoList />} />
+      <Route path="customers" element={<CustomersAdmin />} />
       <Route path="menu" element={<NeedCatalog><MenuAdmin /></NeedCatalog>} />
       <Route path="categories" element={<NeedCatalog><CategoriesAdmin /></NeedCatalog>} />
       <Route path="sets" element={<NeedCatalog><SetsAdmin /></NeedCatalog>} />
@@ -71,6 +73,8 @@ function Dashboard() {
   const navigate = useNavigate()
   const [ym, setYm] = useState(todayIso().slice(0, 7))
   const { beos, err } = useMonthBeos(ym)
+  const [pending, setPending] = useState<Beo[] | null>(null)
+  useEffect(() => { listPendingBeos().then(setPending).catch(() => setPending([])) }, [])
   const stats = useMemo(() => {
     const list = beos ?? []
     const live = list.filter((b) => b.status === 'confirmed' || b.status === 'completed')
@@ -94,6 +98,18 @@ function Dashboard() {
       {err && <div className="notice warn">{err}</div>}
       {!beos ? <Spinner /> : (
         <>
+          {pending && pending.length > 0 && (
+            <section className="card stack" style={{ borderLeft: '4px solid var(--gold)' }}>
+              <h2>รอการยืนยัน ({pending.length})</h2>
+              {pending.map((b) => (
+                <div key={b.id} className="row between" style={{ cursor: 'pointer' }} onClick={() => navigate(`/beo/${b.id}`)}>
+                  <div><strong>{thaiDate(b.event.date, { short: true })}</strong> <span className="small muted">{b.docNo}</span>
+                    <div className="small">{b.event.name} · {b.customer.name} · โดย {b.salesName}</div></div>
+                  <span className="btn small">ตรวจ / ยืนยัน</span>
+                </div>
+              ))}
+            </section>
+          )}
           <div className="stat-grid">
             <div className="card stat"><div className="small muted">รายรับ (ยืนยันแล้ว รวม VAT)</div><div className="v num">{money(stats.revenue)}</div></div>
             <div className="card stat"><div className="small muted">งานที่ยืนยัน</div><div className="v num">{stats.live}</div></div>
@@ -156,7 +172,7 @@ function BeoList() {
         </select>
       </div>
       <div className="chips scroll">
-        {[['all', 'ทั้งหมด'], ['draft', 'แบบร่าง'], ['confirmed', 'ยืนยันแล้ว'], ['completed', 'จัดงานแล้ว'], ['cancelled', 'ยกเลิก']].map(([k, l]) => (
+        {[['all', 'ทั้งหมด'], ['draft', 'แบบร่าง'], ['pending', 'รอการยืนยัน'], ['confirmed', 'ยืนยันแล้ว'], ['completed', 'จัดงานแล้ว'], ['cancelled', 'ยกเลิก']].map(([k, l]) => (
           <button key={k} className={`chip small${status === k ? ' on' : ''}`} onClick={() => setStatus(k)}>{l}</button>
         ))}
       </div>

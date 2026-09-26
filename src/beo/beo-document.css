@@ -55,3 +55,4 @@
 .bd-baht { display: block !important; text-align: right; font-size: 12px; color: #4a5566; }
 .bd-sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 44px; text-align: center; font-size: 12.5px; }
 .bd-line { border-bottom: 1px dotted #7b8595; height: 36px; margin: 0 12px 6px; }
+.bd-watermark.gold { color: rgba(217, 165, 20, .12); }

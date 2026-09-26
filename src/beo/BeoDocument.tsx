@@ -54,6 +54,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
     <div className="beo-doc" ref={ref}>
       {beo.status === 'draft' && <div className="bd-watermark">แบบร่าง</div>}
       {beo.status === 'cancelled' && <div className="bd-watermark red">ยกเลิก</div>}
+      {beo.status === 'pending' && <div className="bd-watermark gold">รอยืนยัน</div>}
       <header className="bd-head">
         <img src="/logo-256.jpg" alt="" className="bd-logo" />
         <div className="bd-hotel">
@@ -128,7 +129,9 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
           <div><span>รวมเป็นเงิน</span><b>{money(beo.totals.subtotal + beo.totals.discount)}</b></div>
           {beo.totals.discount > 0 && <div><span>ส่วนลด</span><b>-{money(beo.totals.discount)}</b></div>}
           {beo.totals.discount > 0 && <div><span>ยอดหลังหักส่วนลด</span><b>{money(beo.totals.subtotal)}</b></div>}
-          <div><span>ภาษีมูลค่าเพิ่ม {Math.round((settings.vatRate ?? 0.07) * 100)}%</span><b>{money(beo.totals.vat)}</b></div>
+          {beo.applyVat === false
+            ? <div><span>ไม่คิดภาษีมูลค่าเพิ่ม</span><b>-</b></div>
+            : <div><span>ภาษีมูลค่าเพิ่ม {Math.round((settings.vatRate ?? 0.07) * 100)}%</span><b>{money(beo.totals.vat)}</b></div>}
           <div className="grand"><span>รวมรายรับทั้งหมด</span><b>{money(beo.totals.grandTotal)}</b></div>
           <div className="bd-baht">({bahtText(beo.totals.grandTotal)})</div>
         </div>

@@ -7,6 +7,7 @@ import { ruleMatches } from '../../lib/pricing'
 import { num } from '../../lib/thai'
 import { Field, Sheet } from '../../components/ui'
 import { TagsInput, useSaver } from './CatalogAdmin'
+import { DEFAULT_NAME_PRESETS } from '../wizard/StepBasics'
 
 const GROUP_LABEL: Record<string, string> = { drinks: 'เครื่องดื่ม', music: 'นักดนตรี' }
 const OPS: FocCondition['op'][] = ['>=', '>', '<=', '<']
@@ -229,6 +230,7 @@ export function SettingsAdmin() {
         <h2>ตัวเลือกในฟอร์ม</h2>
         <Field label="ประเภทงาน"><TagsInput value={s.eventTypes} onChange={(v) => set('eventTypes', v)} /></Field>
         <Field label="รูปแบบการจัดโต๊ะ"><TagsInput value={s.tableLayouts} onChange={(v) => set('tableLayouts', v)} /></Field>
+        <Field label="ชื่องานสำเร็จรูป (ปุ่มลัดในขั้นรายละเอียดงาน)"><TagsInput value={s.eventNamePresets ?? DEFAULT_NAME_PRESETS} onChange={(v) => set('eventNamePresets', v)} /></Field>
         <Field label="หมายเหตุสำเร็จรูป" hint="ใช้ ____ แทนช่องที่ Sales ต้องเติม เช่น ยอดมัดจำ"><TagsInput value={s.remarkPresets} onChange={(v) => set('remarkPresets', v)} /></Field>
       </section>
     </div>

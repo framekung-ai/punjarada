@@ -34,7 +34,7 @@ function Gate() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<Navigate to={home} replace />} />
-          <Route path="/sales" element={<SalesHome />} />
+          <Route path="/sales" element={user.role === 'admin' ? <Navigate to="/admin" replace /> : <SalesHome />} />
           <Route path="/sales/docs" element={<MyDocs />} />
           <Route path="/sales/new" element={<NeedCatalog><Wizard key="new" /></NeedCatalog>} />
           <Route path="/sales/beo/:id/edit" element={<NeedCatalog><Wizard /></NeedCatalog>} />

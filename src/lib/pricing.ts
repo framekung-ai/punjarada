@@ -151,7 +151,7 @@ export function priceBeo(beo: Beo, catalog: Pick<Catalog, 'focRules' | 'services
   const gross = lines.reduce((s, l) => s + toSatang(lineAmount(l)), 0)
   const discount = Math.min(toSatang(beo.discount), gross)
   const subtotal = gross - discount
-  const vat = Math.round(subtotal * vatRate)
+  const vat = beo.applyVat === false ? 0 : Math.round(subtotal * vatRate)
   const focValue = focLines.filter((l) => !l.declined).reduce((s, l) => s + toSatang(l.value ?? 0), 0)
     + base.filter((l) => l.kind === 'service' && l.autoPriceRuleId).reduce((s, l) => {
       const svc = catalog.services.find((x) => x.id === l.refId)

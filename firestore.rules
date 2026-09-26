@@ -96,7 +96,7 @@ service cloud.firestore {
     // ---------- BEO documents ----------
     function validBeo(d) {
       return d.keys().hasAll(['status', 'customer', 'event', 'seating', 'lines', 'totals', 'salesUid', 'salesName'])
-        && d.status in ['draft', 'confirmed', 'completed', 'cancelled']
+        && d.status in ['draft', 'pending', 'confirmed', 'completed', 'cancelled']
         && str(d.customer.name, 200)
         && str(d.event.date, 10)
         && d.lines is list && d.lines.size() <= 200
@@ -108,20 +108,22 @@ service cloud.firestore {
     match /beos/{id} {
       allow read: if isAdmin() || (isActive() && isOwner(resource.data));
 
-      // Sales create their own drafts, or confirm a new BEO directly
+      // Sales create their own drafts, or submit straight away ("pending" = รอการยืนยัน).
+      // Only Admin can confirm.
       allow create: if isActive()
         && validBeo(request.resource.data)
         && (isAdmin()
-            || (isOwner(request.resource.data) && request.resource.data.status in ['draft', 'confirmed']));
+            || (isOwner(request.resource.data) && request.resource.data.status in ['draft', 'pending']));
 
-      // Sales may edit only their own DRAFTS (and confirm them). After confirmation only Admin edits.
+      // Sales may edit their own BEO while it is a draft or waiting for confirmation.
+      // After Admin confirms, only Admin edits.
       allow update: if isActive()
         && validBeo(request.resource.data)
         && (isAdmin()
             || (isOwner(resource.data)
-                && resource.data.status == 'draft'
+                && resource.data.status in ['draft', 'pending']
                 && isOwner(request.resource.data)
-                && request.resource.data.status in ['draft', 'confirmed']));
+                && request.resource.data.status in ['draft', 'pending']));
 
       allow delete: if isAdmin();
 

@@ -36,7 +36,7 @@ export function BeoView() {
     setBusy(label)
     try { await fn() } catch (e) { toast(`${label}ไม่สำเร็จ: ${errorText(e)}`) } finally { setBusy(null) }
   }
-  const canEdit = isAdmin || (beo.status === 'draft' && beo.salesUid === user?.uid)
+  const canEdit = isAdmin || ((beo.status === 'draft' || beo.status === 'pending') && beo.salesUid === user?.uid)
   const editPath = isAdmin ? `/admin/beo/${id}/edit` : `/sales/beo/${id}/edit`
   const changeStatus = async (s: Beo['status']) => {
     if (s === 'cancelled' && !window.confirm('ยืนยันยกเลิกงานนี้?')) return
@@ -60,10 +60,16 @@ export function BeoView() {
         <button className="btn" onClick={() => navigate('/sales/new', { state: { copyFrom: beo } })}>คัดลอกเป็นงานใหม่</button>
       </div>
 
+      {beo.status === 'pending' && (isAdmin ? (
+        <div className="notice gold">
+          <span>งานนี้รอการยืนยัน — ตรวจรายละเอียดด้านล่าง แล้วกดยืนยัน (หรือกด “แก้ไข” เพื่อปรับก่อนยืนยัน)</span>
+          <button className="btn primary" onClick={() => void changeStatus('confirmed')}>ยืนยันงาน</button>
+        </div>
+      ) : <div className="notice gold">ส่งแล้ว รอ Admin ยืนยัน — ยังแก้ไขได้จนกว่า Admin จะยืนยัน</div>)}
       {isAdmin && (
         <div className="card flat row wrap">
           <span className="small muted">Admin:</span>
-          {beo.status !== 'completed' && beo.status !== 'draft' && <button className="btn small" onClick={() => void changeStatus('completed')}>จัดงานแล้ว</button>}
+          {beo.status === 'confirmed' && <button className="btn small" onClick={() => void changeStatus('completed')}>จัดงานแล้ว</button>}
           {beo.status === 'cancelled' && <button className="btn small" onClick={() => void changeStatus('confirmed')}>คืนสถานะยืนยัน</button>}
           {beo.status !== 'cancelled' && beo.status !== 'draft' && <button className="btn small danger" onClick={() => void changeStatus('cancelled')}>ยกเลิกงาน</button>}
           <button className="btn small" onClick={() => void listRevisions(id).then(setRevs).catch((e) => toast(errorText(e)))}>ประวัติการแก้ไข</button>

@@ -136,7 +136,7 @@ textarea.input { min-height: 96px; resize: vertical; }
 .sidenav .group { font-size: .78rem; font-weight: 700; color: var(--ink-3); padding: 12px 12px 4px; }
 .sidenav a { padding: 10px 12px; border-radius: 10px; text-decoration: none; color: var(--ink-2); font-weight: 500; }
 .sidenav a.active { background: var(--brand-soft); color: var(--brand-dark); font-weight: 700; }
-.main { flex: 1; min-width: 0; padding: 16px; padding-bottom: 96px; max-width: 1100px; margin: 0 auto; width: 100%; }
+.main { flex: 1; min-width: 0; padding: 16px; padding-bottom: 104px; max-width: 1100px; margin: 0 auto; width: 100%; }
 @media (min-width: 1024px) { .main { padding: 24px 32px 48px; } }
 .bottomnav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; background: #fff;
@@ -240,3 +240,25 @@ table.list tr.click:hover td { background: #f8fafc; }
 
 .preview-scale { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .stepper .icon-btn { font-size: 1.25rem; color: var(--ink); }
+
+/* prominent event name */
+.name-card { border: 2px solid var(--brand-soft); }
+.name-label { font-size: 1.05rem; font-weight: 700; color: var(--brand-dark); }
+.input.input-lg { min-height: 56px; font-size: 1.2rem; font-weight: 600; }
+
+/* ---------- sales navigator (always visible) ---------- */
+.sales-tabs {
+  position: sticky; top: 56px; z-index: 19; display: flex; gap: 4px; padding: 6px 12px;
+  background: #fff; border-bottom: 1px solid var(--line); overflow-x: auto;
+}
+.sales-tabs a {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px;
+  padding: 0 10px; border-radius: 10px; text-decoration: none; color: var(--ink-2); font-weight: 600; white-space: nowrap;
+}
+.sales-tabs a.active { background: var(--brand-soft); color: var(--brand-dark); }
+@media (max-width: 420px) { .sales-tabs a { flex-direction: column; gap: 2px; font-size: .8rem; min-height: 52px; } }
+@media (min-width: 768px) { .sales-tabs { justify-content: center; } .sales-tabs a { flex: 0 1 200px; } }
+.sidenav a { display: flex; align-items: center; gap: 10px; }
+.sidenav a svg { flex-shrink: 0; opacity: .85; }
+.admin-menu .chip svg { margin-right: 2px; }
+.badge.pending { background: var(--gold-soft); color: #8a6600; }

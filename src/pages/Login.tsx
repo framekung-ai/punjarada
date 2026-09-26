@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { errorText, Field } from '../components/ui'
 
 export function Login() {
   const { login, firebaseUser, user, loading, logout } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [err, setErr] = useState<string | null>(null)
@@ -15,6 +17,7 @@ export function Login() {
     setErr(null)
     try {
       await login(email, password)
+      navigate('/', { replace: true }) // land on the home page of the signed-in role
     } catch (ex) {
       setErr(errorText(ex))
     } finally {

@@ -69,6 +69,17 @@ describe('BEO documents', () => {
   it('sales create a draft for themselves', () => assertSucceeds(setDoc(doc(as('sales1'), 'beos/n1'), beo('sales1'))))
   it('sales cannot create a BEO in another name', () => assertFails(setDoc(doc(as('sales1'), 'beos/n2'), beo('sales2'))))
   it('sales edit their draft', () => assertSucceeds(updateDoc(doc(as('sales1'), 'beos/d1'), { note: 'แก้' })))
+  it('sales submit a BEO for confirmation', () => assertSucceeds(updateDoc(doc(as('sales1'), 'beos/d1'), { status: 'pending' })))
+  it('sales cannot confirm their own BEO', () => assertFails(updateDoc(doc(as('sales1'), 'beos/d1'), { status: 'confirmed' })))
+  it('sales cannot create an already-confirmed BEO', () => assertFails(setDoc(doc(as('sales1'), 'beos/n3'), beo('sales1', 'confirmed'))))
+  it('sales can still edit while pending', async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'beos/p1'), beo('sales1', 'pending')))
+    await assertSucceeds(updateDoc(doc(as('sales1'), 'beos/p1'), { note: 'แก้' }))
+  })
+  it('admin confirms a pending BEO', async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(doc(ctx.firestore(), 'beos/p2'), beo('sales1', 'pending')))
+    await assertSucceeds(updateDoc(doc(as('admin1'), 'beos/p2'), { status: 'confirmed' }))
+  })
   it('sales cannot edit after confirmation', () => assertFails(updateDoc(doc(as('sales1'), 'beos/c1'), { note: 'แก้' })))
   it('sales cannot mark a draft completed', () => assertFails(updateDoc(doc(as('sales1'), 'beos/d1'), { status: 'completed' })))
   it('admin edits confirmed BEOs', () => assertSucceeds(updateDoc(doc(as('admin1'), 'beos/c1'), { note: 'แก้' })))

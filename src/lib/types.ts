@@ -139,6 +139,7 @@ export interface Settings {
   eventTypes: string[]
   tableLayouts: string[]
   remarkPresets: string[]
+  eventNamePresets?: string[]
   mealTemplates: MealTemplate[]
 }
 
@@ -154,10 +155,11 @@ export interface Catalog {
 
 // ---------- BEO ----------
 
-export type BeoStatus = 'draft' | 'confirmed' | 'completed' | 'cancelled'
+export type BeoStatus = 'draft' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
 
 export const STATUS_LABEL: Record<BeoStatus, string> = {
   draft: 'แบบร่าง',
+  pending: 'รอการยืนยัน',
   confirmed: 'ยืนยันแล้ว',
   completed: 'จัดงานแล้ว',
   cancelled: 'ยกเลิก',
@@ -224,6 +226,8 @@ export interface Beo {
   }
   lines: BeoLine[]
   discount: number
+  /** false = ไม่คิด VAT (ตัดสินใจในขั้นสุดท้าย). undefined = คิด VAT */
+  applyVat?: boolean
   terms: string[]
   note: string
   totals: BeoTotals
@@ -243,6 +247,8 @@ export interface AppUser {
 }
 
 export interface CustomerRecord {
+  id?: string
+  updatedAt?: { toDate(): Date }
   name: string
   phone: string
   organization: string

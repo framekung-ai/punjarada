@@ -97,7 +97,7 @@ export function Empty({ children }: { children: ReactNode }) {
 
 export function StatusBadge({ status }: { status: string }) {
   const map: Record<string, [string, string]> = {
-    draft: ['แบบร่าง', 'gray'], confirmed: ['ยืนยันแล้ว', 'ok'], completed: ['จัดงานแล้ว', ''], cancelled: ['ยกเลิก', 'danger'],
+    draft: ['แบบร่าง', 'gray'], pending: ['รอการยืนยัน', 'pending'], confirmed: ['ยืนยันแล้ว', 'ok'], completed: ['จัดงานแล้ว', ''], cancelled: ['ยกเลิก', 'danger'],
   }
   const [t, c] = map[status] ?? [status, 'gray']
   return <span className={`badge ${c}`}>{t}</span>

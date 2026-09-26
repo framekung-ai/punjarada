@@ -39,7 +39,19 @@ export function StepConfirm({ beo, setBeo, catalog, isAdmin }: {
             onChange={(e) => setBeo((b) => ({ ...b, discount: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 }))} />
         </Field>
       )}
-      <div className="row between"><strong>ตัวอย่างเอกสาร</strong><span className="small muted">รวมทั้งสิ้น {money(beo.totals.grandTotal)} บาท</span></div>
+      <div className="card flat stack" style={{ gap: 8 }}>
+        <strong>ภาษีมูลค่าเพิ่ม</strong>
+        <div className="chips">
+          <button type="button" className={`chip${beo.applyVat !== false ? ' on' : ''}`} onClick={() => setBeo((x) => ({ ...x, applyVat: true }))}>คิด VAT 7%</button>
+          <button type="button" className={`chip${beo.applyVat === false ? ' on' : ''}`} onClick={() => setBeo((x) => ({
+            ...x, applyVat: false, terms: x.terms.filter((t) => !t.includes('ภาษีมูลค่าเพิ่ม')),
+          }))}>ไม่คิด VAT</button>
+        </div>
+        <div className="row between"><span>ยอดก่อน VAT</span><span className="num">{money(beo.totals.subtotal)}</span></div>
+        {beo.applyVat !== false && <div className="row between"><span>VAT 7%</span><span className="num">{money(beo.totals.vat)}</span></div>}
+        <div className="row between" style={{ fontWeight: 700, fontSize: '1.1rem' }}><span>รวมทั้งสิ้น</span><span className="num">{money(beo.totals.grandTotal)}</span></div>
+      </div>
+      <strong>ตัวอย่างเอกสาร</strong>
       <ScaledDoc><BeoDocument beo={beo} settings={catalog.settings} /></ScaledDoc>
     </div>
   )

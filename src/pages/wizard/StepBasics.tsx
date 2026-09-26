@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Beo, Catalog } from '../../lib/types'
 import { Field, Stepper, useToast } from '../../components/ui'
 import { ThaiDatePicker } from '../../components/ThaiDatePicker'
@@ -87,9 +87,9 @@ export function StepCustomer({ beo, setBeo, errors, onRegular }: StepProps & { o
   return (
     <div className="stack">
       <h2>ข้อมูลลูกค้า</h2>
-      <Field label="เบอร์โทรศัพท์" required error={errors.phone} hint="กรอกเบอร์ก่อน ระบบจะดึงข้อมูลลูกค้าเดิมให้">
-        <input className={`input${errors.phone ? ' invalid' : ''}`} inputMode="tel" autoComplete="off" value={c.phone}
-          placeholder="0XX-XXX-XXXX" onChange={(e) => set('phone', e.target.value)} onBlur={() => void lookup()} />
+      <Field label="เบอร์โทรศัพท์" required error={errors.phone} hint="ใส่เฉพาะตัวเลข ไม่ต้องใส่ขีด (-) เช่น 0812345678 — กรอกเบอร์ก่อน ระบบจะดึงข้อมูลลูกค้าเดิมให้">
+        <input className={`input${errors.phone ? ' invalid' : ''}`} inputMode="numeric" autoComplete="off" value={c.phone}
+          placeholder="0812345678" onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} onBlur={() => void lookup()} />
       </Field>
       <Field label="ชื่อลูกค้า" required error={errors.name}>
         <input className={`input${errors.name ? ' invalid' : ''}`} value={c.name} placeholder="เช่น คุณรุ่งโรจน์" onChange={(e) => set('name', e.target.value)} />
@@ -103,7 +103,7 @@ export function StepCustomer({ beo, setBeo, errors, onRegular }: StepProps & { o
           <Field label="ที่อยู่"><input className="input" value={c.address} onChange={(e) => set('address', e.target.value)} /></Field>
           <div className="grid2">
             <Field label="ผู้ประสานงานหน้างาน"><input className="input" value={c.contactName} onChange={(e) => set('contactName', e.target.value)} /></Field>
-            <Field label="เบอร์ผู้ประสานงาน"><input className="input" inputMode="tel" value={c.contactPhone} onChange={(e) => set('contactPhone', e.target.value)} /></Field>
+            <Field label="เบอร์ผู้ประสานงาน"><input className="input" inputMode="numeric" placeholder="0812345678" value={c.contactPhone} onChange={(e) => set('contactPhone', e.target.value.replace(/\D/g, '').slice(0, 10))} /></Field>
           </div>
         </div>
       </details>
@@ -111,10 +111,13 @@ export function StepCustomer({ beo, setBeo, errors, onRegular }: StepProps & { o
   )
 }
 
+export const DEFAULT_NAME_PRESETS = ['งานเลี้ยงรุ่น', 'งานเกษียณอายุราชการ', 'งานสังสรรค์ภายใน', 'งานอบรมภายใน']
+
 const QUICK_TIMES: [string, string, string][] = [['เช้า', '09:00', '12:00'], ['กลางวัน', '11:30', '14:00'], ['เย็น', '18:00', '22:00']]
 
 export function StepEvent({ beo, setBeo, catalog, errors }: StepProps) {
   const ev = beo.event
+  const nameRef = useRef<HTMLInputElement>(null)
   const set = (k: keyof Beo['event'], v: string) => setBeo((b) => ({ ...b, event: { ...b.event, [k]: v } }))
   const [bookings, setBookings] = useState<Booking[]>([])
   useEffect(() => {
@@ -132,9 +135,20 @@ export function StepEvent({ beo, setBeo, catalog, errors }: StepProps) {
   return (
     <div className="stack">
       <h2>รายละเอียดงาน</h2>
-      <Field label="ชื่องาน" required error={errors.eventName}>
-        <input className={`input${errors.eventName ? ' invalid' : ''}`} value={ev.name} placeholder="เช่น งานเลี้ยงเกษียณอายุราชการ" onChange={(e) => set('name', e.target.value)} />
-      </Field>
+      <div className="card name-card stack" style={{ gap: 10 }}>
+        <label htmlFor="event-name" className="name-label">ชื่องาน <span className="req">*</span></label>
+        <input id="event-name" ref={nameRef} className={`input input-lg${errors.eventName ? ' invalid' : ''}`} value={ev.name}
+          placeholder="พิมพ์ชื่องาน หรือเลือกจากปุ่มด้านล่าง" onChange={(e) => set('name', e.target.value)} />
+        <div className="chips">
+          {(catalog.settings.eventNamePresets?.length ? catalog.settings.eventNamePresets : DEFAULT_NAME_PRESETS).map((p) => (
+            <button key={p} type="button" className={`chip small${ev.name.startsWith(p) ? ' on' : ''}`} onClick={() => {
+              set('name', ev.name.startsWith(p) ? ev.name : `${p} `)
+              nameRef.current?.focus()
+            }}>{p}</button>
+          ))}
+        </div>
+        {errors.eventName && <div className="err">{errors.eventName}</div>}
+      </div>
       <Field label={`วันที่จัดงาน${ev.date ? ` — ${thaiDate(ev.date, { weekday: true })}` : ''}`} required error={errors.date}>
         <ThaiDatePicker value={ev.date} onChange={(v) => set('date', v)} />
       </Field>
@@ -197,7 +211,7 @@ export function StepSeating({ beo, setBeo, catalog, errors }: StepProps) {
     <div className="stack">
       <h2>แขกและการจัดโต๊ะ</h2>
       <Field label="จำนวนแขก (ท่าน)" required error={errors.guests}>
-        <Stepper value={s.guests} min={0} max={5000} step={10} onChange={(v) => update({ guests: v })} />
+        <Stepper value={s.guests} min={0} max={5000} step={1} onChange={(v) => update({ guests: v })} />
       </Field>
       <Field label="รูปแบบการจัดโต๊ะ" required error={errors.layout}>
         <div className="choice-grid">

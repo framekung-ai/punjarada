@@ -1,20 +1,52 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet } from 'react-router-dom'
+import {
+  BookOpen, ClipboardList, Contact, FilePlus2, FileText, Gift, Home, LayoutDashboard, LayoutList, LogOut,
+  Settings, Tags, UploadCloud, UserCog, UtensilsCrossed, Wrench, type LucideIcon,
+} from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { useCatalog } from '../lib/catalog'
 import { Spinner } from './ui'
 
-export const ADMIN_NAV: { group: string; items: [string, string][] }[] = [
-  { group: 'งาน', items: [['/admin', 'แดชบอร์ด'], ['/admin/beos', 'เอกสาร BEO'], ['/sales/new', '+ สร้าง BEO']] },
-  { group: 'เมนู', items: [['/admin/menu', 'เมนูอาหาร'], ['/admin/categories', 'หมวดหมู่'], ['/admin/sets', 'เซ็ตเมนู'], ['/admin/templates', 'โครงมื้อ']] },
-  { group: 'ตั้งค่า', items: [['/admin/services', 'บริการ'], ['/admin/foc', 'กฎ FOC'], ['/admin/settings', 'ทั่วไป / ห้อง'], ['/admin/users', 'ผู้ใช้งาน'], ['/admin/setup', 'นำเข้าข้อมูล']] },
+type NavItem = [to: string, label: string, icon: LucideIcon]
+
+export const ADMIN_NAV: { group: string; items: NavItem[] }[] = [
+  {
+    group: 'งาน', items: [
+      ['/admin', 'แดชบอร์ด', LayoutDashboard],
+      ['/admin/beos', 'เอกสาร BEO', FileText],
+      ['/admin/customers', 'ลูกค้า', Contact],
+      ['/sales/new', 'สร้าง BEO', FilePlus2],
+    ],
+  },
+  {
+    group: 'เมนู', items: [
+      ['/admin/menu', 'เมนูอาหาร', UtensilsCrossed],
+      ['/admin/categories', 'หมวดหมู่', Tags],
+      ['/admin/sets', 'เซ็ตเมนู', BookOpen],
+      ['/admin/templates', 'โครงมื้อ', LayoutList],
+    ],
+  },
+  {
+    group: 'ตั้งค่า', items: [
+      ['/admin/services', 'บริการ', Wrench],
+      ['/admin/foc', 'กฎ FOC', Gift],
+      ['/admin/settings', 'ทั่วไป / ห้อง', Settings],
+      ['/admin/users', 'ผู้ใช้งาน', UserCog],
+      ['/admin/setup', 'นำเข้าข้อมูล', UploadCloud],
+    ],
+  },
+]
+
+const SALES_NAV: NavItem[] = [
+  ['/sales', 'หน้าแรก', Home],
+  ['/sales/new', 'สร้าง BEO', FilePlus2],
+  ['/sales/docs', 'เอกสารของฉัน', ClipboardList],
 ]
 
 export function AppShell() {
   const { user, logout } = useAuth()
   const { loading, error, empty } = useCatalog()
   const isAdmin = user?.role === 'admin'
-  // the wizard has its own sticky footer (back / total / next) — no bottom nav there
-  const inWizard = /\/(new|edit)$/.test(useLocation().pathname)
 
   return (
     <>
@@ -24,15 +56,25 @@ export function AppShell() {
           <div className="title">PunjadaraPOS</div>
           <div className="small muted">{user?.displayName} · {isAdmin ? 'Admin' : 'Sales'}</div>
         </div>
-        <button className="btn small ghost" onClick={() => void logout()}>ออกจากระบบ</button>
+        <button className="btn small ghost" onClick={() => void logout()} aria-label="ออกจากระบบ" title="ออกจากระบบ"><LogOut size={18} aria-hidden /> <span className="hide-mobile">ออกจากระบบ</span></button>
       </header>
+      {!isAdmin && (
+        // Sales: always-visible navigator (also inside the form) so earlier documents are one tap away
+        <nav className="sales-tabs" aria-label="เมนูหลัก">
+          {SALES_NAV.map(([to, label, Icon]) => (
+            <NavLink key={to} to={to} end={to === '/sales'}><Icon size={20} aria-hidden /><span>{label}</span></NavLink>
+          ))}
+        </nav>
+      )}
       <div className="shell">
         {isAdmin && (
-          <nav className="sidenav">
+          <nav className="sidenav" aria-label="เมนู Admin">
             {ADMIN_NAV.map((g) => (
               <div key={g.group} className="stack" style={{ gap: 2 }}>
                 <div className="group">{g.group}</div>
-                {g.items.map(([to, label]) => <NavLink key={to} to={to} end={to === '/admin'}>{label}</NavLink>)}
+                {g.items.map(([to, label, Icon]) => (
+                  <NavLink key={to} to={to} end={to === '/admin'}><Icon size={19} strokeWidth={1.9} aria-hidden /><span>{label}</span></NavLink>
+                ))}
               </div>
             ))}
           </nav>
@@ -40,8 +82,10 @@ export function AppShell() {
         <main className="main">
           {isAdmin && (
             <div className="admin-menu">
-              {ADMIN_NAV.flatMap((g) => g.items).map(([to, label]) => (
-                <NavLink key={to} to={to} end={to === '/admin'} className={({ isActive }) => `chip small${isActive ? ' on' : ''}`}>{label}</NavLink>
+              {ADMIN_NAV.flatMap((g) => g.items).map(([to, label, Icon]) => (
+                <NavLink key={to} to={to} end={to === '/admin'} className={({ isActive }) => `chip small${isActive ? ' on' : ''}`}>
+                  <Icon size={16} aria-hidden />{label}
+                </NavLink>
               ))}
             </div>
           )}
@@ -52,13 +96,6 @@ export function AppShell() {
           ) : <Outlet />}
         </main>
       </div>
-      {!isAdmin && !inWizard && (
-        <nav className="bottomnav">
-          <NavLink to="/sales" end><span className="ico">⌂</span>หน้าแรก</NavLink>
-          <NavLink to="/sales/new"><span className="ico">＋</span>สร้าง BEO</NavLink>
-          <NavLink to="/sales/docs"><span className="ico">☰</span>เอกสารของฉัน</NavLink>
-        </nav>
-      )}
     </>
   )
 }

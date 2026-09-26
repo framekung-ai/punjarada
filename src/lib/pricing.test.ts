@@ -153,3 +153,12 @@ describe('hints respect set contents', () => {
     expect(r.hints.some((h) => h.text.includes('เก๊กฮวย'))).toBe(false)
   })
 })
+
+describe('VAT toggle', () => {
+  it('applyVat = false gives no VAT', () => {
+    const b = { ...beo([set('set-chaosua', 10)], 10), applyVat: false }
+    const r = priceBeo(b, catalog)
+    expect(r.totals.vat).toBe(0)
+    expect(r.totals.grandTotal).toBe(30000)
+  })
+})

@@ -154,6 +154,18 @@ export async function createUserAccount(email: string, password: string, display
 
 export const phoneKey = (p: string) => p.replace(/\D/g, '')
 
+/** Admin: customer directory (newest first). */
+export async function listCustomers(max = 500): Promise<CustomerRecord[]> {
+  const snap = await getDocs(query(collection(db, 'customers'), orderBy('updatedAt', 'desc'), limit(max)))
+  return snap.docs.map((d) => ({ ...(d.data() as CustomerRecord), id: d.id }))
+}
+
+/** Admin: every BEO of one customer (by phone digits). */
+export async function listBeosByPhone(phone: string): Promise<Beo[]> {
+  const snap = await getDocs(query(collection(db, 'beos'), where('customer.phone', '==', phoneKey(phone))))
+  return snap.docs.map((d) => ({ ...(d.data() as Beo), id: d.id })).sort((a, b) => b.event.date.localeCompare(a.event.date))
+}
+
 export async function findCustomer(phone: string): Promise<CustomerRecord | null> {
   const k = phoneKey(phone)
   if (k.length < 9) return null
@@ -181,14 +193,21 @@ export async function updateBeo(id: string, b: Beo) {
 }
 
 /**
- * Confirm (or re-save a confirmed BEO): gives it a running number on first confirm,
- * bumps the revision on later saves, stores a revision snapshot and updates the customer record.
+ * Submit a BEO.
+ * - Sales: status -> "pending" (รอการยืนยัน). Admin reviews and confirms later.
+ * - Admin: status -> "confirmed" (or keeps completed/cancelled when re-saving).
+ * Gives a running number on first submit, bumps the revision when a confirmed BEO is edited,
+ * stores an append-only revision snapshot, the public room booking and the customer record.
  */
-export async function confirmBeo(id: string | undefined, b: Beo, actor: { uid: string; name: string }): Promise<{ id: string; docNo: string }> {
+export async function submitBeo(
+  id: string | undefined, b: Beo, actor: { uid: string; name: string; isAdmin: boolean },
+): Promise<{ id: string; docNo: string; status: Beo['status'] }> {
   const ref = id ? doc(db, 'beos', id) : doc(beosCol)
   return runTransaction(db, async (tx) => {
     const current = id ? await tx.get(ref) : null
-    const wasConfirmed = !!current?.exists() && current.data()?.status !== 'draft'
+    const cs = current?.exists() ? (current.data().status as Beo['status']) : null
+    const wasSubmitted = !!cs && cs !== 'draft'
+    const wasConfirmed = cs === 'confirmed' || cs === 'completed' || cs === 'cancelled'
     let docNo = (current?.data()?.docNo as string | null) ?? b.docNo
     const custKey = phoneKey(b.customer.phone)
     const custRef = custKey.length >= 9 ? doc(db, 'customers', custKey) : null
@@ -203,17 +222,19 @@ export async function confirmBeo(id: string | undefined, b: Beo, actor: { uid: s
       const mm = (b.event.date || '').slice(5, 7) || '00'
       docNo = `BEO-${year}-${mm}-${String(next).padStart(4, '0')}`
     }
-    const revision = wasConfirmed ? (b.revision ?? 0) + 1 : 0
-    const status = b.status === 'draft' ? 'confirmed' : b.status
+    const status: Beo['status'] = actor.isAdmin
+      ? (b.status === 'draft' || b.status === 'pending' ? 'confirmed' : b.status)
+      : 'pending'
+    const revision = wasConfirmed ? (b.revision ?? 0) + 1 : (b.revision ?? 0)
     const data = {
       ...beoPayload({ ...b, docNo, revision, status }),
       updatedAt: serverTimestamp(),
-      ...(wasConfirmed ? {} : { confirmedAt: serverTimestamp() }),
+      ...(status === 'confirmed' && !wasConfirmed ? { confirmedAt: serverTimestamp() } : {}),
       ...(current?.exists() ? {} : { createdAt: serverTimestamp() }),
     }
     if (current?.exists()) tx.update(ref, data)
     else tx.set(ref, data)
-    tx.set(doc(db, 'beos', ref.id, 'revisions', String(revision)), {
+    tx.set(doc(db, 'beos', ref.id, 'revisions', `${revision}-${Date.now()}`), {
       ...beoPayload({ ...b, docNo, revision, status }),
       savedAt: serverTimestamp(), savedBy: actor.uid, savedByName: actor.name,
     })
@@ -221,16 +242,16 @@ export async function confirmBeo(id: string | undefined, b: Beo, actor: { uid: s
       beoId: ref.id, date: b.event.date, room: b.event.room, start: b.event.start, end: b.event.end,
       eventName: b.event.name, salesName: b.salesName, status, salesUid: b.salesUid,
     })
-    if (custRef && !wasConfirmed) {
+    if (custRef && !wasSubmitted) {
       const c = b.customer
       tx.set(custRef, {
-        name: c.name, phone: c.phone, organization: c.organization, address: c.address,
+        name: c.name, phone: custKey, organization: c.organization, address: c.address,
         contactName: c.contactName, contactPhone: c.contactPhone,
         beoCount: (cust?.exists() ? Number(cust.data().beoCount ?? 0) : 0) + 1,
         updatedAt: serverTimestamp(),
       })
     }
-    return { id: ref.id, docNo }
+    return { id: ref.id, docNo, status }
   })
 }
 
@@ -242,7 +263,9 @@ export async function getBeo(id: string): Promise<Beo | null> {
 /** Admin only (rules). Keeps the public booking in sync. */
 export async function setBeoStatus(id: string, status: Beo['status']) {
   const batch = writeBatch(db)
-  batch.update(doc(db, 'beos', id), { status, updatedAt: serverTimestamp() })
+  batch.update(doc(db, 'beos', id), {
+    status, updatedAt: serverTimestamp(), ...(status === 'confirmed' ? { confirmedAt: serverTimestamp() } : {}),
+  })
   const bk = await getDoc(doc(db, 'bookings', id))
   if (bk.exists()) batch.update(doc(db, 'bookings', id), { status })
   await batch.commit()
@@ -260,6 +283,12 @@ export async function listMyBeos(uid: string, max = 50): Promise<Beo[]> {
   const q = query(beosCol, where('salesUid', '==', uid), orderBy('event.date', 'desc'), limit(max))
   const snap = await getDocs(q)
   return snap.docs.map((d) => ({ ...(d.data() as Beo), id: d.id }))
+}
+
+/** Admin: every BEO waiting for confirmation (any month). */
+export async function listPendingBeos(max = 100): Promise<Beo[]> {
+  const snap = await getDocs(query(beosCol, where('status', '==', 'pending'), limit(max)))
+  return snap.docs.map((d) => ({ ...(d.data() as Beo), id: d.id })).sort((a, b) => a.event.date.localeCompare(b.event.date))
 }
 
 /** Admin: BEOs whose event date is within [from, to] (YYYY-MM-DD). */
@@ -282,7 +311,7 @@ export interface Booking {
 
 /**
  * Room clash check. BEOs hold customer data and Sales may only read their own, so every
- * confirmed BEO also writes a small public `bookings/{beoId}` doc (date, room, time only).
+ * submitted BEO also writes a small public `bookings/{beoId}` doc (date, room, time only).
  */
 export async function bookingsOnDate(date: string): Promise<Booking[]> {
   const snap = await getDocs(query(collection(db, 'bookings'), where('date', '==', date)))

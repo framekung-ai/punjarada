@@ -20,7 +20,7 @@
 ### 1.1 เปิดบริการใน Firebase Console
 1. **Authentication → Sign-in method → Email/Password → Enable** (ไม่ต้องเปิด Email link)
 2. **Authentication → Settings → User actions → เปิด “Email enumeration protection”** (กันคนเดาว่าอีเมลไหนมีบัญชี)
-3. **Authentication → Settings → Authorized domains** ควรมีแค่ `localhost`, `punjadarapos.firebaseapp.com`, `punjadarapos.web.app` (และโดเมนจริงถ้ามี)
+3. **Authentication → Settings → Authorized domains** ควรมีแค่ `localhost`, `punjadarapos.firebaseapp.com`, `punjadarapos.web.app` และโดเมน Vercel ที่ใช้จริง (เช่น `punjadara-pos.vercel.app`)
 4. **Firestore Database → Create database → Production mode**
    - Location: **`asia-southeast1` (Singapore)** — ใกล้ไทยที่สุด *เปลี่ยนภายหลังไม่ได้*
    - ถ้าสร้างไว้แล้วด้วย test mode ให้ deploy rules ในข้อ 1.2 ทันที (test mode เปิดให้ทุกคนอ่าน/เขียนได้ 30 วัน)
@@ -51,6 +51,15 @@ Rules ไม่ยอมให้ใครตั้งตัวเองเป�
 4. เพิ่ม Sales ที่เมนู **ผู้ใช้งาน → + เพิ่มผู้ใช้** (แอปสร้างบัญชีให้โดย Admin ไม่หลุดจากระบบ)
 
 ### 1.4 Deploy เว็บ
+
+**ทางเลือก A — Vercel (ผ่าน GitHub)**
+1. สร้าง repo แบบ **Private** โดยให้ root ของ repo = โฟลเดอร์ `app` (อย่า push โฟลเดอร์ `BEO Sample` เพราะมีชื่อและเบอร์โทรลูกค้าจริง)
+2. Vercel → Add New Project → เลือก repo → Framework = Vite (ไฟล์ `vercel.json` ตั้งค่า build / output / SPA rewrite ไว้แล้ว ไม่ต้องใส่ Environment Variables)
+3. ถ้า repo มีโฟลเดอร์อื่นด้วย ให้ตั้ง **Root Directory = `app`**
+4. เอาโดเมน `.vercel.app` ที่ได้ไปใส่ใน Authorized domains (ข้อ 1.1) และ API key restrictions (ข้อ 5)
+5. Rules / index ยัง deploy ด้วย `npm run deploy:rules` จากเครื่อง — Vercel ไม่ได้ deploy ให้
+
+**ทางเลือก B — Firebase Hosting**
 ```bash
 npm run deploy              # build + deploy hosting และ firestore rules
 ```
@@ -65,16 +74,16 @@ npm run deploy              # build + deploy hosting และ firestore rules
 | --- | --- | --- | --- |
 | `users` | อ่านของตัวเอง | อ่าน/เขียนทั้งหมด | Admin ลดสิทธิ์/ปิดตัวเองไม่ได้ (กันล็อกตัวเองออก) |
 | `categories`, `menuItems`, `menuSets`, `services`, `focRules`, `settings`, `meta` | อ่าน | อ่าน/เขียน | ตรวจชื่อ ≤150 ตัว, ราคา ≥ 0 |
-| `customers/{เบอร์โทร}` | อ่าน/สร้าง/แก้ | + ลบ | ID ต้องเป็นตัวเลข 9–10 หลัก |
+| `customers/{เบอร์โทร}` | อ่าน/สร้าง/แก้ | + ลบ, ค้นหาในเมนู “ลูกค้า” | ID ต้องเป็นตัวเลข 9–10 หลัก |
 | `counters/beo-{พ.ศ.}` | อ่าน, เพิ่มทีละ 1 | เหมือนกัน | ข้ามเลข/ลดเลข/ลบ ไม่ได้ |
-| `beos` | สร้างในชื่อตัวเอง, อ่านของตัวเอง, แก้ได้เฉพาะ **แบบร่าง** ของตัวเอง (และกดยืนยัน) | ทุกอย่าง | หลังยืนยันแล้วแก้ได้เฉพาะ Admin |
+| `beos` | สร้างในชื่อตัวเอง, อ่านของตัวเอง, แก้ได้ตอน **แบบร่าง** และ **รอการยืนยัน**, ส่งงาน = สถานะ `pending` | ทุกอย่าง รวมถึงกด **ยืนยันงาน** | Sales ยืนยันงานเองไม่ได้ — หลัง Admin ยืนยันแก้ได้เฉพาะ Admin |
 | `beos/{id}/revisions` | อ่าน/เพิ่ม ของงานตัวเอง | อ่าน/เพิ่ม | แก้ไข/ลบไม่ได้ (audit trail) |
 | `bookings/{beoId}` | อ่านทั้งหมด, เขียนของงานตัวเอง | ทุกอย่าง | ใช้เช็กห้องชนกัน — มีแค่ วัน/ห้อง/เวลา/ชื่องาน ไม่มีข้อมูลลูกค้า |
 | อื่นๆ ทั้งหมด | ✗ | ✗ | ปิดเป็นค่าเริ่มต้น |
 
 ทำไมต้องมี `bookings`: Sales อ่าน BEO ของคนอื่นไม่ได้ (มีชื่อ/เบอร์ลูกค้า) แต่ต้องรู้ว่าห้องว่างไหม จึงแยกข้อมูลจองห้องที่ไม่มีข้อมูลส่วนตัวออกมาให้ทุกคนอ่าน
 
-ข้อจำกัดที่รู้อยู่: ยอดเงินคำนวณในแอป (ไม่มี Cloud Functions) — Sales ที่ตั้งใจแก้ request เองอาจส่งยอดผิดได้ในแบบร่างของตัวเอง แต่หลังยืนยันแก้ไม่ได้ และ Admin เห็นประวัติทุก revision ถ้าต้องการบังคับยอดฝั่งเซิร์ฟเวอร์ ให้เพิ่ม Cloud Function `onBeoConfirm` ในเฟส 3 (ต้องใช้ Blaze)
+ข้อจำกัดที่รู้อยู่: ยอดเงินคำนวณในแอป (ไม่มี Cloud Functions) — Sales ที่ตั้งใจแก้ request เองอาจส่งยอดผิดได้ในงานของตัวเองที่ยังไม่ยืนยัน แต่ Admin ต้องตรวจและกดยืนยันก่อนทุกครั้ง หลังยืนยันแล้ว Sales แก้ไม่ได้ และ Admin เห็นประวัติทุก revision ถ้าต้องการบังคับยอดฝั่งเซิร์ฟเวอร์ ให้เพิ่ม Cloud Function `onBeoConfirm` ในเฟส 3 (ต้องใช้ Blaze)
 
 ---
 
@@ -181,7 +190,7 @@ service cloud.firestore {
     // ---------- BEO documents ----------
     function validBeo(d) {
       return d.keys().hasAll(['status', 'customer', 'event', 'seating', 'lines', 'totals', 'salesUid', 'salesName'])
-        && d.status in ['draft', 'confirmed', 'completed', 'cancelled']
+        && d.status in ['draft', 'pending', 'confirmed', 'completed', 'cancelled']
         && str(d.customer.name, 200)
         && str(d.event.date, 10)
         && d.lines is list && d.lines.size() <= 200
@@ -193,20 +202,22 @@ service cloud.firestore {
     match /beos/{id} {
       allow read: if isAdmin() || (isActive() && isOwner(resource.data));
 
-      // Sales create their own drafts, or confirm a new BEO directly
+      // Sales create their own drafts, or submit straight away ("pending" = รอการยืนยัน).
+      // Only Admin can confirm.
       allow create: if isActive()
         && validBeo(request.resource.data)
         && (isAdmin()
-            || (isOwner(request.resource.data) && request.resource.data.status in ['draft', 'confirmed']));
+            || (isOwner(request.resource.data) && request.resource.data.status in ['draft', 'pending']));
 
-      // Sales may edit only their own DRAFTS (and confirm them). After confirmation only Admin edits.
+      // Sales may edit their own BEO while it is a draft or waiting for confirmation.
+      // After Admin confirms, only Admin edits.
       allow update: if isActive()
         && validBeo(request.resource.data)
         && (isAdmin()
             || (isOwner(resource.data)
-                && resource.data.status == 'draft'
+                && resource.data.status in ['draft', 'pending']
                 && isOwner(request.resource.data)
-                && request.resource.data.status in ['draft', 'confirmed']));
+                && request.resource.data.status in ['draft', 'pending']));
 
       allow delete: if isAdmin();
 
@@ -296,7 +307,8 @@ service firebase.storage {
 
 - ค่า `apiKey` ใน config **ไม่ใช่ความลับ** มันแค่บอกว่าเป็นโปรเจกต์ไหน ความปลอดภัยจริงอยู่ที่ Auth + Rules ข้างบน
 - ควรจำกัด key ใน **Google Cloud Console → APIs & Services → Credentials → Browser key (auto created by Firebase)**:
-  - Application restrictions → **Websites**: `https://punjadarapos.web.app/*`, `https://punjadarapos.firebaseapp.com/*`, `http://localhost:5173/*`
+  - Application restrictions → **Websites**: `https://punjadara-pos.vercel.app/*` (โดเมน Vercel จริงของคุณ), `https://punjadarapos.web.app/*`, `https://punjadarapos.firebaseapp.com/*`, `http://localhost:5173/*`
+  - ถ้าใช้ Preview deployments ของ Vercel ให้เพิ่ม `https://*-<ชื่อทีม>.vercel.app/*` ด้วย ไม่งั้นหน้า preview จะล็อกอินไม่ได้
   - API restrictions: Identity Toolkit API, Token Service API, Cloud Firestore API, Firebase Installations API
 - **Authentication → Settings → Password policy**: ขั้นต่ำ 8 ตัวอักษร (หน้าเพิ่มผู้ใช้บังคับ 8 ตัวอยู่แล้ว)
 - ปิดบัญชีคนที่ลาออก: หน้า **ผู้ใช้งาน** → เอาติ๊ก “ใช้งาน” ออก (มีผลทันที ไม่ต้องลบ)
@@ -337,7 +349,7 @@ npm install
 npm run test:rules
 ```
 
-ครอบคลุม 27 กรณี เช่น คนไม่มีโปรไฟล์อ่านเมนูไม่ได้, Sales แก้ราคาไม่ได้, Sales อ่าน BEO ของคนอื่นไม่ได้, แก้หลังยืนยันไม่ได้, Admin ล็อกตัวเองออกไม่ได้, เลขที่เอกสารข้ามเลขไม่ได้ (ไฟล์ `tests/firestore.rules.test.ts`)
+ครอบคลุม 32 กรณี เช่น คนไม่มีโปรไฟล์อ่านเมนูไม่ได้, Sales แก้ราคาไม่ได้, Sales อ่าน BEO ของคนอื่นไม่ได้, แก้หลังยืนยันไม่ได้, Admin ล็อกตัวเองออกไม่ได้, เลขที่เอกสารข้ามเลขไม่ได้ (ไฟล์ `tests/firestore.rules.test.ts`)
 
 > ยังไม่ได้รันชุดนี้จากฝั่งผู้พัฒนา เพราะเครือข่ายที่ใช้สร้างโปรเจกต์ดาวน์โหลดตัว emulator ไม่ได้ — ควรรันบนเครื่องจริงหนึ่งครั้งก่อน deploy rules
 

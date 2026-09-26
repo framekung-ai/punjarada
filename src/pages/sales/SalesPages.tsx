@@ -40,6 +40,9 @@ export function SalesHome() {
   const in7 = addDaysIso(today, 7)
   const upcoming = (beos ?? []).filter((b) => b.status !== 'cancelled' && b.event.date >= today && b.event.date <= in7).sort((a, b) => a.event.date.localeCompare(b.event.date))
   const drafts = (beos ?? []).filter((b) => b.status === 'draft')
+  const pending = (beos ?? []).filter((b) => b.status === 'pending')
+  const tsMs = (v: unknown) => ((v as { toMillis?: () => number })?.toMillis?.() ?? (typeof v === 'number' ? v : 0))
+  const recent = [...(beos ?? [])].sort((a, b) => tsMs(b.updatedAt) - tsMs(a.updatedAt)).slice(0, 5)
   return (
     <div className="stack">
       <div>
@@ -49,6 +52,12 @@ export function SalesHome() {
       <Link to="/sales/new" className="btn primary big block">＋ สร้าง BEO ใหม่</Link>
       {err && <div className="notice warn">{err}</div>}
       {!beos && !err && <Spinner />}
+      {pending.length > 0 && (
+        <section className="stack">
+          <h2>รอ Admin ยืนยัน ({pending.length})</h2>
+          {pending.slice(0, 5).map((b) => <BeoCard key={b.id} b={b} />)}
+        </section>
+      )}
       {drafts.length > 0 && (
         <section className="stack">
           <h2>แบบร่างที่ยังไม่ยืนยัน ({drafts.length})</h2>
@@ -59,6 +68,12 @@ export function SalesHome() {
         <section className="stack">
           <h2>งานใน 7 วันนี้</h2>
           {upcoming.length ? upcoming.map((b) => <BeoCard key={b.id} b={b} />) : <Empty>ไม่มีงานในสัปดาห์นี้</Empty>}
+        </section>
+      )}
+      {recent.length > 0 && (
+        <section className="stack">
+          <div className="row between"><h2>เอกสารล่าสุด</h2><Link to="/sales/docs" className="btn small ghost">ดูทั้งหมด</Link></div>
+          {recent.map((b) => <BeoCard key={b.id} b={b} />)}
         </section>
       )}
     </div>
@@ -80,7 +95,7 @@ export function MyDocs() {
       <h1>เอกสารของฉัน</h1>
       <input className="input" type="search" placeholder="ค้นหา ชื่อลูกค้า / เบอร์ / ชื่องาน / เลขที่" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="chips scroll">
-        {[['all', 'ทั้งหมด'], ['draft', 'แบบร่าง'], ['confirmed', 'ยืนยันแล้ว'], ['completed', 'จัดงานแล้ว'], ['cancelled', 'ยกเลิก']].map(([k, l]) => (
+        {[['all', 'ทั้งหมด'], ['draft', 'แบบร่าง'], ['pending', 'รอการยืนยัน'], ['confirmed', 'ยืนยันแล้ว'], ['completed', 'จัดงานแล้ว'], ['cancelled', 'ยกเลิก']].map(([k, l]) => (
           <button key={k} className={`chip small${status === k ? ' on' : ''}`} onClick={() => setStatus(k)}>{l}</button>
         ))}
       </div>

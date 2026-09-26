@@ -58,7 +58,7 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
     <div className="stack">
       <div className="row between wrap">
         <h2>อาหารและบริการ</h2>
-        <span className="small muted">{beo.seating.tables > 0 ? `${beo.seating.tables} โต๊ะ · ` : ''}{num(beo.seating.guests)} ท่าน</span>
+        <span className="small muted">{beo.seating.tables > 0 ? `${beo.seating.tables} โต๊ะ · ` : ''}{num(beo.seating.guests)} ท่าน · ราคาก่อน VAT</span>
       </div>
 
       {/* one compact line: what's missing in the meal */}
@@ -357,8 +357,8 @@ export function CartSheet({ open, onClose, priced, updateLines, isAdmin }: {
       <div className="card flat stack" style={{ gap: 4 }}>
         <div className="row between"><span>รวม</span><span className="num">{money(t.subtotal + t.discount)}</span></div>
         {t.discount > 0 && <div className="row between"><span>ส่วนลด</span><span className="num">-{money(t.discount)}</span></div>}
-        <div className="row between"><span>VAT 7%</span><span className="num">{money(t.vat)}</span></div>
-        <div className="row between" style={{ fontWeight: 700, fontSize: '1.1rem' }}><span>รวมทั้งสิ้น</span><span className="num">{money(t.grandTotal)}</span></div>
+        <div className="row between" style={{ fontWeight: 700, fontSize: '1.1rem' }}><span>ยอดก่อน VAT</span><span className="num">{money(t.subtotal)}</span></div>
+        <div className="small muted">คิด / ไม่คิด VAT 7% เลือกได้ในขั้นสุดท้าย</div>
       </div>
     </Sheet>
   )
