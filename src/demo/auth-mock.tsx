@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
   return (
     <Ctx.Provider value={value}>
-      <div style={{ background: '#fff6dc', color: '#6e5200', textAlign: 'center', fontSize: 13, padding: 4 }}>
+      <div className="demo-banner" style={{ background: '#fff6dc', color: '#6e5200', textAlign: 'center', fontSize: 13, padding: 4 }}>
         โหมดทดลอง (ไม่เชื่อมต่อ Firebase) — ล็อกอินด้วยอีเมลที่มีคำว่า admin เพื่อเข้า Admin
       </div>
       {children}
