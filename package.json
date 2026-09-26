@@ -1,0 +1,39 @@
+{
+  "name": "punjadara-pos",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "demo": "vite --mode demo",
+    "build:demo": "vite build --mode demo --outDir dist-demo",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-punjadara \"vitest run --config vitest.rules.config.ts\"",
+    "lint": "oxlint src",
+    "deploy": "npm run build && firebase deploy --only hosting,firestore",
+    "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes"
+  },
+  "dependencies": {
+    "@fontsource/sarabun": "^5.3.0",
+    "firebase": "^12.19.0",
+    "html-to-image": "^1.11.13",
+    "jspdf": "^4.2.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "firebase-tools": "^15.31.0",
+    "oxlint": "^1.81.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.2"
+  }
+}

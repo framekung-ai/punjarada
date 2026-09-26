@@ -1,0 +1,57 @@
+/* Printed document — fixed A4 width so JPG/PDF look the same on every device */
+.beo-doc {
+  position: relative; width: 794px; min-height: 1123px; padding: 40px 44px 36px; background: #fff; color: #1b2430;
+  font-family: 'Sarabun', sans-serif; font-size: 13.5px; line-height: 1.45; overflow: hidden;
+}
+.beo-doc b { font-weight: 700; }
+.bd-watermark {
+  position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg);
+  font-size: 140px; font-weight: 700; color: rgba(11, 127, 193, .07); pointer-events: none; white-space: nowrap;
+}
+.bd-watermark.red { color: rgba(201, 59, 59, .1); }
+.bd-head { display: flex; align-items: center; gap: 16px; padding-bottom: 12px; border-bottom: 3px solid #0b7fc1; }
+.bd-logo { width: 78px; height: 78px; border-radius: 50%; }
+.bd-hotel { flex: 1; }
+.bd-hotel-name { font-size: 22px; font-weight: 700; color: #075f91; }
+.bd-hotel-en { font-size: 12px; letter-spacing: 3px; color: #0b7fc1; text-transform: uppercase; margin-bottom: 2px; }
+.bd-small { font-size: 11.5px; color: #4a5566; }
+.bd-docbox { border: 1px solid #cfd8e3; border-radius: 8px; padding: 8px 12px; min-width: 210px; font-size: 12.5px; }
+.bd-docbox div { display: flex; justify-content: space-between; gap: 12px; }
+.bd-docbox span { color: #4a5566; }
+.bd-title { text-align: center; font-weight: 700; font-size: 15px; color: #075f91; margin: 14px 0 12px; }
+.bd-info { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.bd-col { border: 1px solid #d7dee8; border-radius: 8px; overflow: hidden; }
+.bd-colhead { background: #e6f3fb; color: #075f91; font-weight: 700; padding: 6px 12px; }
+.bd-colhead.small { background: none; padding: 0 0 4px; font-size: 12.5px; }
+.bd-row { display: flex; gap: 8px; padding: 5px 12px; border-top: 1px solid #eef1f5; }
+.bd-row:first-of-type { border-top: 0; }
+.bd-l { width: 92px; flex-shrink: 0; color: #4a5566; }
+.bd-v { font-weight: 600; word-break: break-word; }
+.bd-venue { display: grid; grid-template-columns: 1fr 1fr 1.6fr; margin: 12px 0; border: 1px solid #d7dee8; border-radius: 8px; }
+.bd-venue div { padding: 7px 12px; display: flex; flex-direction: column; border-left: 1px solid #eef1f5; }
+.bd-venue div:first-child { border-left: 0; }
+.bd-venue span { font-size: 11.5px; color: #4a5566; }
+.bd-table { width: 100%; border-collapse: collapse; }
+.bd-table th { background: #0b7fc1; color: #fff; font-weight: 600; padding: 7px 8px; font-size: 12.5px; text-align: left; }
+.bd-table td { padding: 6px 8px; border-bottom: 1px solid #e6eaf0; vertical-align: top; }
+.bd-table .n { text-align: right; font-variant-numeric: tabular-nums; }
+.bd-table .c { text-align: center; }
+.bd-table th.n { text-align: right; }
+.bd-table th.c { text-align: center; }
+.bd-group td { background: #f4f7fa; font-weight: 700; color: #075f91; font-size: 12.5px; padding: 5px 8px; }
+.bd-group.gold td { background: #fff6dc; color: #8a6600; }
+.bd-item { font-weight: 600; }
+.bd-sub { font-size: 12px; color: #4a5566; }
+.bd-tag { margin-left: 6px; font-size: 10.5px; padding: 1px 6px; border-radius: 6px; background: #fff6dc; color: #8a6600; font-weight: 600; }
+.bd-setlist { margin: 3px 0 0; padding-left: 20px; columns: 2; column-gap: 20px; font-size: 12.5px; color: #333d4a; }
+.bd-sum { display: grid; grid-template-columns: 1fr 300px; gap: 20px; margin-top: 14px; }
+.bd-terms { margin: 0; padding-left: 18px; font-size: 12.5px; }
+.bd-note { margin-top: 6px; font-size: 12.5px; white-space: pre-wrap; }
+.gold-text { color: #8a6600; margin-top: 6px; }
+.bd-sum-right div { display: flex; justify-content: space-between; padding: 3px 0; font-variant-numeric: tabular-nums; }
+.bd-sum-right div span { color: #4a5566; }
+.bd-sum-right .grand { border-top: 2px solid #0b7fc1; margin-top: 4px; padding-top: 6px; font-size: 16px; }
+.bd-sum-right .grand span { color: #075f91; font-weight: 700; }
+.bd-baht { display: block !important; text-align: right; font-size: 12px; color: #4a5566; }
+.bd-sign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 44px; text-align: center; font-size: 12.5px; }
+.bd-line { border-bottom: 1px dotted #7b8595; height: 36px; margin: 0 12px 6px; }

@@ -1,0 +1,3004 @@
+{
+ "categories": [
+  {
+   "id": "appetizer",
+   "name": "ออเดิร์ฟ",
+   "sort": 1,
+   "active": true
+  },
+  {
+   "id": "yum",
+   "name": "ยำ",
+   "sort": 2,
+   "active": true
+  },
+  {
+   "id": "main",
+   "name": "จานหลัก",
+   "sort": 3,
+   "active": true
+  },
+  {
+   "id": "fish",
+   "name": "ปลา",
+   "sort": 4,
+   "active": true
+  },
+  {
+   "id": "shrimp",
+   "name": "กุ้ง",
+   "sort": 5,
+   "active": true
+  },
+  {
+   "id": "crab",
+   "name": "ปู",
+   "sort": 6,
+   "active": true
+  },
+  {
+   "id": "veg",
+   "name": "ผัก",
+   "sort": 7,
+   "active": true
+  },
+  {
+   "id": "soup",
+   "name": "ซุป",
+   "sort": 8,
+   "active": true
+  },
+  {
+   "id": "rice",
+   "name": "ข้าว",
+   "sort": 9,
+   "active": true
+  },
+  {
+   "id": "noodle",
+   "name": "เส้น",
+   "sort": 10,
+   "active": true
+  },
+  {
+   "id": "dessert",
+   "name": "ของหวาน",
+   "sort": 11,
+   "active": true
+  },
+  {
+   "id": "drink",
+   "name": "เครื่องดื่ม",
+   "sort": 12,
+   "active": true
+  }
+ ],
+ "menuItems": [
+  {
+   "id": "m001",
+   "name": "เป็ดเทียมเทียม",
+   "categoryId": "main",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 650,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 1,
+   "protein": "duck"
+  },
+  {
+   "id": "m002",
+   "name": "สลัดกุ้งร้อน",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 2,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m003",
+   "name": "เคราหยก",
+   "categoryId": "main",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 3
+  },
+  {
+   "id": "m004",
+   "name": "ขาหมูหมั่นโถว",
+   "categoryId": "main",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 4,
+   "protein": "pork"
+  },
+  {
+   "id": "m005",
+   "name": "ไก่แช่เหล้า",
+   "categoryId": "main",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 5,
+   "protein": "chicken"
+  },
+  {
+   "id": "m006",
+   "name": "ไก่ทอดเกลือ",
+   "categoryId": "main",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 6,
+   "protein": "chicken"
+  },
+  {
+   "id": "m007",
+   "name": "กุ้งแช่น้ำปลา",
+   "categoryId": "shrimp",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 7,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m008",
+   "name": "พล่าปูนิ่ม",
+   "categoryId": "crab",
+   "course": "yum",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 8,
+   "protein": "crab"
+  },
+  {
+   "id": "m009",
+   "name": "เป๋าฮื้อเส้นเจี๋ยน",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 9
+  },
+  {
+   "id": "m010",
+   "name": "ผัดโหงวก๊วย",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 10
+  },
+  {
+   "id": "m011",
+   "name": "ตีนเป็ดอบวุ้นเส้น",
+   "categoryId": "main",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 11,
+   "protein": "duck"
+  },
+  {
+   "id": "m012",
+   "name": "บะหมี่ฮกเกี้ยน",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 12
+  },
+  {
+   "id": "m013",
+   "name": "โกยซีหมี่",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [
+    "หมู",
+    "ไก่"
+   ],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 13
+  },
+  {
+   "id": "m014",
+   "name": "เส้นหมี่ราดหน้าปลาเต้าซี่",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 14,
+   "protein": "fish",
+   "needsReview": "ราคาในไฟล์ไม่ตรงกัน: 400, 450 (ใช้ 450)"
+  },
+  {
+   "id": "m015",
+   "name": "ปลากะพงทอดน้ำปลา",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 15,
+   "protein": "fish"
+  },
+  {
+   "id": "m016",
+   "name": "ซี่โครงหมูอบน้ำผึ้ง",
+   "categoryId": "main",
+   "course": "main",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 16,
+   "protein": "pork"
+  },
+  {
+   "id": "m017",
+   "name": "ซุปกระเพาะปลาน้ำแดง",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 17,
+   "protein": "fish"
+  },
+  {
+   "id": "m018",
+   "name": "ซุปหูฉลามน้ำแดง",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "แนะนำ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 3500,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 18
+  },
+  {
+   "id": "m019",
+   "name": "ออเดิร์ฟร้อน",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 19
+  },
+  {
+   "id": "m020",
+   "name": "ออเดิร์ฟทะเล",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 650,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 20,
+   "protein": "seafood"
+  },
+  {
+   "id": "m021",
+   "name": "ออเดิร์ฟอีสาน",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 21
+  },
+  {
+   "id": "m022",
+   "name": "หอยจ๊อ",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 22
+  },
+  {
+   "id": "m023",
+   "name": "หมูซอสไวน์แดง",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 23,
+   "protein": "pork"
+  },
+  {
+   "id": "m024",
+   "name": "กระเพาะปลาผัดแห้ง",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 24,
+   "protein": "fish"
+  },
+  {
+   "id": "m025",
+   "name": "แมงกะพรุนน้ำมันงา",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 25
+  },
+  {
+   "id": "m026",
+   "name": "ปอเปี๊ยะฮ่องกง",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 26
+  },
+  {
+   "id": "m027",
+   "name": "ไส้กรอกไวน์แดง",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 27
+  },
+  {
+   "id": "m028",
+   "name": "ออส่วน",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 28
+  },
+  {
+   "id": "m029",
+   "name": "ลิ้นเป็ดน้ำมันงา",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 29,
+   "protein": "duck"
+  },
+  {
+   "id": "m030",
+   "name": "ยำขาหมูยัดไส้",
+   "categoryId": "appetizer",
+   "course": "yum",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 380,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 30,
+   "protein": "pork"
+  },
+  {
+   "id": "m031",
+   "name": "ไก่ผัดเม็ดมะม่วง",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 31,
+   "protein": "chicken"
+  },
+  {
+   "id": "m032",
+   "name": "ไข่เยี่ยวม้ากะเพรากรอบ",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 32
+  },
+  {
+   "id": "m033",
+   "name": "กุ้งโรยงา",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 33,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m034",
+   "name": "กุ้งทอดซอสมะขาม",
+   "categoryId": "appetizer",
+   "course": "appetizer",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 34,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m035",
+   "name": "บะหมี่อบขาเป็ด",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 35,
+   "protein": "duck"
+  },
+  {
+   "id": "m036",
+   "name": "ปลากะพงนึ่งซีอิ๊ว",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 36,
+   "protein": "fish"
+  },
+  {
+   "id": "m037",
+   "name": "ปลากะพงนึ่งมะนาว",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 37,
+   "protein": "fish"
+  },
+  {
+   "id": "m038",
+   "name": "ปลากะพงทอดกระเทียม",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 38,
+   "protein": "fish"
+  },
+  {
+   "id": "m039",
+   "name": "ปลากะพงทอดราดพริก",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 39,
+   "protein": "fish"
+  },
+  {
+   "id": "m040",
+   "name": "ปลากะพงยำสมุนไพร",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 40,
+   "protein": "fish"
+  },
+  {
+   "id": "m041",
+   "name": "ปลากะพงเจี๋ยนน้ำแดง",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 41,
+   "protein": "fish"
+  },
+  {
+   "id": "m042",
+   "name": "ปลากะพงนึ่งบ๊วย",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 42,
+   "protein": "fish"
+  },
+  {
+   "id": "m043",
+   "name": "ปลาช่อนยำสมุนไพร",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 43,
+   "protein": "fish"
+  },
+  {
+   "id": "m044",
+   "name": "ปลาทับทิมนึ่งมะนาว",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 44,
+   "protein": "fish"
+  },
+  {
+   "id": "m045",
+   "name": "ปลาทับทิมยำสมุนไพร",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 45,
+   "protein": "fish"
+  },
+  {
+   "id": "m046",
+   "name": "เนื้อปลากะพงผัดฉ่า",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 46,
+   "protein": "fish"
+  },
+  {
+   "id": "m047",
+   "name": "เนื้อปลากะพงผัดพริกไทยดำ",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 47,
+   "protein": "fish"
+  },
+  {
+   "id": "m048",
+   "name": "เนื้อปลากะพงทอดกระเทียม",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 48,
+   "protein": "fish"
+  },
+  {
+   "id": "m049",
+   "name": "ปลาหิมะนึ่งซีอิ๊ว",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "perWeight",
+   "price": 400,
+   "unit": "ขีด",
+   "setOnly": false,
+   "active": true,
+   "sort": 49,
+   "protein": "fish"
+  },
+  {
+   "id": "m050",
+   "name": "ปลาหิมะทอดกระเทียม",
+   "categoryId": "fish",
+   "course": "fish",
+   "tags": [],
+   "variants": [],
+   "priceType": "perWeight",
+   "price": 400,
+   "unit": "ขีด",
+   "setOnly": false,
+   "active": true,
+   "sort": 50,
+   "protein": "fish"
+  },
+  {
+   "id": "m051",
+   "name": "ปวยเล้งผัดกระเทียม",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 380,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 51
+  },
+  {
+   "id": "m052",
+   "name": "ปวยเล้งน้ำมันหอย",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 380,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 52
+  },
+  {
+   "id": "m053",
+   "name": "ผักกาดแก้วผัดน้ำมันหอย",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 53
+  },
+  {
+   "id": "m054",
+   "name": "ผัดสี่สหายน้ำแดง",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 54
+  },
+  {
+   "id": "m055",
+   "name": "ผัดผักรวมมิตรใส่กุ้ง",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 55,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m056",
+   "name": "หน่อไม้ทะเลเจี๋ยนกุ้ง",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 650,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 56,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m057",
+   "name": "หน่อไม้ทะเลเจี๋ยนคะน้า",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 57,
+   "protein": "seafood"
+  },
+  {
+   "id": "m058",
+   "name": "หน่อไม้ฝรั่งกระป๋องเจี๋ยนกุ้ง",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 58,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m059",
+   "name": "ผักบุ้งฮ่องเต้",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 300,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 59
+  },
+  {
+   "id": "m060",
+   "name": "ยำวุ้นเส้น",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 380,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 60
+  },
+  {
+   "id": "m061",
+   "name": "ยำรวมมิตรทะเล",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 61,
+   "protein": "seafood"
+  },
+  {
+   "id": "m062",
+   "name": "ยำก้านคะน้ากุ้งสด",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 62,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m063",
+   "name": "ยำเส้นเซี่ยงไฮ้",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 380,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 63
+  },
+  {
+   "id": "m064",
+   "name": "หมูมะนาว",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 380,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 64,
+   "protein": "pork"
+  },
+  {
+   "id": "m065",
+   "name": "ยำมะเขือยาวกุ้งสด",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 65,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m066",
+   "name": "ทะเลลวกจิ้ม",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 66,
+   "protein": "seafood"
+  },
+  {
+   "id": "m067",
+   "name": "ซุปกระเพาะปลาเห็ดหอมน้ำใส",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 67,
+   "protein": "fish"
+  },
+  {
+   "id": "m068",
+   "name": "ซุปเยื่อไผ่เห็ดหอมน้ำใส",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 68
+  },
+  {
+   "id": "m069",
+   "name": "ซุปเต้าหู้ทรงเครื่องน้ำแดง",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 69
+  },
+  {
+   "id": "m070",
+   "name": "ซุปเยื่อไผ่เห็ดหอมน้ำแดง",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 70
+  },
+  {
+   "id": "m071",
+   "name": "ต้มจืดเต้าหู้สาหร่าย",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 71
+  },
+  {
+   "id": "m072",
+   "name": "ต้มจืดทะเล",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 72,
+   "protein": "seafood"
+  },
+  {
+   "id": "m073",
+   "name": "ต้มแซ่บ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [
+    "เอ็นหมู",
+    "ซี่โครงอ่อน"
+   ],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 73
+  },
+  {
+   "id": "m074",
+   "name": "ต้มยำกุ้ง",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [
+    "น้ำข้น",
+    "น้ำใส"
+   ],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 74,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m075",
+   "name": "ต้มยำรวมมิตรทะเล",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [
+    "น้ำข้น",
+    "น้ำใส"
+   ],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 75,
+   "protein": "seafood"
+  },
+  {
+   "id": "m076",
+   "name": "หัวปลาต้มยำ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 76,
+   "protein": "fish"
+  },
+  {
+   "id": "m077",
+   "name": "หัวปลาต้มเผือก",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 77,
+   "protein": "fish"
+  },
+  {
+   "id": "m078",
+   "name": "เนื้อปลาต้มเผือก",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 78,
+   "protein": "fish"
+  },
+  {
+   "id": "m079",
+   "name": "เนื้อปลาต้มยำ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [
+    "น้ำข้น",
+    "น้ำใส"
+   ],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 79,
+   "protein": "fish"
+  },
+  {
+   "id": "m080",
+   "name": "กุ้งผัดผงกะหรี่",
+   "categoryId": "shrimp",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 80,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m081",
+   "name": "กุ้งทอดสมุนไพรซอสมะขาม",
+   "categoryId": "shrimp",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 81,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m082",
+   "name": "กุ้งอบวุ้นเส้น",
+   "categoryId": "shrimp",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 82,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m083",
+   "name": "กุ้งผัดจิ๋วหยิ่ม",
+   "categoryId": "shrimp",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 550,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 83,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m084",
+   "name": "กุ้งมะนาว",
+   "categoryId": "shrimp",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 84,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m085",
+   "name": "พล่ากุ้ง",
+   "categoryId": "shrimp",
+   "course": "yum",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 500,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 85,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m086",
+   "name": "โกยซีหมี่กุ้ง",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 86,
+   "protein": "shrimp"
+  },
+  {
+   "id": "m087",
+   "name": "เนื้อปูผัดผงกะหรี่",
+   "categoryId": "crab",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 700,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 87,
+   "protein": "crab"
+  },
+  {
+   "id": "m088",
+   "name": "ปูนิ่มทอดกระเทียม",
+   "categoryId": "crab",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 88,
+   "protein": "crab"
+  },
+  {
+   "id": "m089",
+   "name": "ปูนิ่มผัดผงกะหรี่",
+   "categoryId": "crab",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 89,
+   "protein": "crab"
+  },
+  {
+   "id": "m090",
+   "name": "ปูนิ่มผัดพริกไทยดำ",
+   "categoryId": "crab",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 600,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 90,
+   "protein": "crab"
+  },
+  {
+   "id": "m091",
+   "name": "ปูนิ่มผัดจิ๋วหยิ่ม",
+   "categoryId": "crab",
+   "course": "main",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 700,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 91,
+   "protein": "crab"
+  },
+  {
+   "id": "m092",
+   "name": "ข้าวผัด",
+   "categoryId": "rice",
+   "course": "rice",
+   "tags": [],
+   "variants": [
+    "หมู",
+    "ไก่"
+   ],
+   "priceType": "fixed",
+   "price": 380,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 92
+  },
+  {
+   "id": "m093",
+   "name": "ข้าวผัด",
+   "categoryId": "rice",
+   "course": "rice",
+   "tags": [],
+   "variants": [
+    "ปู",
+    "กุ้ง"
+   ],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 93
+  },
+  {
+   "id": "m094",
+   "name": "ข้าวผัดหยางโจว",
+   "categoryId": "rice",
+   "course": "rice",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 94
+  },
+  {
+   "id": "m095",
+   "name": "ข้าวผัดหนำเลี้ยบ",
+   "categoryId": "rice",
+   "course": "rice",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 95
+  },
+  {
+   "id": "m096",
+   "name": "ข้าวผัดกุนเชียง",
+   "categoryId": "rice",
+   "course": "rice",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 96
+  },
+  {
+   "id": "m097",
+   "name": "ข้าวห่อใบบัว",
+   "categoryId": "rice",
+   "course": "rice",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 97
+  },
+  {
+   "id": "m098",
+   "name": "เส้นหมี่ราดหน้า",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [],
+   "variants": [
+    "หมู",
+    "ไก่"
+   ],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 98
+  },
+  {
+   "id": "m099",
+   "name": "เส้นหมี่ราดหน้าทะเล",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 99,
+   "protein": "seafood"
+  },
+  {
+   "id": "m100",
+   "name": "เส้นเซี่ยงไฮ้ผัดซีอิ๊ว",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [],
+   "variants": [
+    "หมู",
+    "ไก่"
+   ],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 100
+  },
+  {
+   "id": "m101",
+   "name": "เส้นเซี่ยงไฮ้ผัดซีอิ๊วทะเล",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "ทะเล"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 101,
+   "protein": "seafood"
+  },
+  {
+   "id": "m102",
+   "name": "โกยซีหมี่",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [],
+   "variants": [
+    "กุ้ง",
+    "ทะเล"
+   ],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 102
+  },
+  {
+   "id": "m103",
+   "name": "ผัดหมี่ซั่ว",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 103
+  },
+  {
+   "id": "m104",
+   "name": "ผักบุ้งฮ่องเต้เจ",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 300,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 104
+  },
+  {
+   "id": "m105",
+   "name": "ผักปวยเล้งน้ำมันหอยเจ",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 105
+  },
+  {
+   "id": "m106",
+   "name": "ผัดผักรวมมิตรเจ",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 106
+  },
+  {
+   "id": "m107",
+   "name": "เห็ดออริจิเจี๋ยนคะน้าเจ",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 107
+  },
+  {
+   "id": "m108",
+   "name": "ซุปเยื่อไผ่น้ำแดงเจ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 108
+  },
+  {
+   "id": "m109",
+   "name": "ซุปเยื่อไผ่เห็ดหอมน้ำใสเจ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 109
+  },
+  {
+   "id": "m110",
+   "name": "ซุปเต้าหู้ทรงเครื่องน้ำแดงเจ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 110
+  },
+  {
+   "id": "m111",
+   "name": "แกงจืดเต้าหู้สาหร่ายเจ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 111
+  },
+  {
+   "id": "m112",
+   "name": "ต้มยำรวมมิตรเจ",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "หม้อ",
+   "setOnly": false,
+   "active": true,
+   "sort": 112
+  },
+  {
+   "id": "m113",
+   "name": "ยำวุ้นเส้นเจ",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 113
+  },
+  {
+   "id": "m114",
+   "name": "ยำเห็ดรวมมิตรเจ",
+   "categoryId": "yum",
+   "course": "yum",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 114
+  },
+  {
+   "id": "m115",
+   "name": "ข้าวผัดเจ",
+   "categoryId": "rice",
+   "course": "rice",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 115
+  },
+  {
+   "id": "m116",
+   "name": "ผัดหมี่ซั่วเจ",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 116
+  },
+  {
+   "id": "m117",
+   "name": "เส้นหมี่ราดหน้าเจ",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 117
+  },
+  {
+   "id": "m118",
+   "name": "โกยซีหมี่เจ",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 118
+  },
+  {
+   "id": "m119",
+   "name": "เส้นเซี่ยงไฮ้ผัดซีอิ๊วเจ",
+   "categoryId": "noodle",
+   "course": "noodle",
+   "tags": [
+    "เจ"
+   ],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "จาน",
+   "setOnly": false,
+   "active": true,
+   "sort": 119
+  },
+  {
+   "id": "m120",
+   "name": "แป๊ะก๊วยมะพร้าวอ่อน",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 350,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 120
+  },
+  {
+   "id": "m121",
+   "name": "แป๊ะก๊วยนมสด",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [
+    "ร้อน",
+    "เย็น"
+   ],
+   "priceType": "fixed",
+   "price": 350,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 121
+  },
+  {
+   "id": "m122",
+   "name": "แป๊ะก๊วย",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [
+    "ร้อน",
+    "เย็น"
+   ],
+   "priceType": "fixed",
+   "price": 350,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 122
+  },
+  {
+   "id": "m123",
+   "name": "แป๊ะก๊วยเผือกบด",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 123
+  },
+  {
+   "id": "m124",
+   "name": "เต้าฮวยฟรุ๊ตสลัด",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 350,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 124
+  },
+  {
+   "id": "m125",
+   "name": "สาคูแคนตาลูป",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 350,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 125
+  },
+  {
+   "id": "m126",
+   "name": "บัวลอยทอด",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 126
+  },
+  {
+   "id": "m127",
+   "name": "เผือกทองคำ",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 400,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 127
+  },
+  {
+   "id": "m128",
+   "name": "บัวลอยน้ำขิง",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 450,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 128
+  },
+  {
+   "id": "m129",
+   "name": "ผลไม้ตามฤดูกาล",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 300,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 129
+  },
+  {
+   "id": "m130",
+   "name": "ผลไม้กระป๋อง",
+   "categoryId": "dessert",
+   "course": "dessert",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 350,
+   "unit": "ชุด",
+   "setOnly": false,
+   "active": true,
+   "sort": 130
+  },
+  {
+   "id": "m131",
+   "name": "เก็กฮวยเย็น",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 120,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 131
+  },
+  {
+   "id": "m132",
+   "name": "เก็กฮวยร้อน",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 50,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 132
+  },
+  {
+   "id": "m133",
+   "name": "หล่อฮั่งก๊วย",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 50,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 133
+  },
+  {
+   "id": "m134",
+   "name": "ชาจีน",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 60,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 134
+  },
+  {
+   "id": "m135",
+   "name": "น้ำเปล่า",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 20,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 135
+  },
+  {
+   "id": "m136",
+   "name": "โค้ก",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "byOption",
+   "price": 25,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 136,
+   "options": [
+    {
+     "label": "ขนาดเล็ก",
+     "price": 25
+    },
+    {
+     "label": "ขนาดใหญ่",
+     "price": 50
+    }
+   ],
+   "needsReview": "ราคา 25 / 50 — ยืนยันชื่อขนาด"
+  },
+  {
+   "id": "m137",
+   "name": "โซดา",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 25,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 137
+  },
+  {
+   "id": "m138",
+   "name": "เบียร์ไฮเนเก้น",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 120,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 138
+  },
+  {
+   "id": "m139",
+   "name": "เบียร์สิงห์",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 120,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 139
+  },
+  {
+   "id": "m140",
+   "name": "เบียร์ลีโอ",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 100,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 140
+  },
+  {
+   "id": "m141",
+   "name": "เบียร์ช้าง",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 100,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 141
+  },
+  {
+   "id": "m142",
+   "name": "สปาย",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 60,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 142
+  },
+  {
+   "id": "m143",
+   "name": "น้ำแข็ง",
+   "categoryId": "drink",
+   "course": "drink",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 50,
+   "unit": "รายการ",
+   "setOnly": false,
+   "active": true,
+   "sort": 143
+  },
+  {
+   "id": "m144",
+   "name": "ผักบุ้งจักรพรรดิ",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 0,
+   "unit": "จาน",
+   "setOnly": true,
+   "active": true,
+   "sort": 144
+  },
+  {
+   "id": "m145",
+   "name": "ผักบุ้งเจ้าสัว",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 0,
+   "unit": "จาน",
+   "setOnly": true,
+   "active": true,
+   "sort": 145
+  },
+  {
+   "id": "m146",
+   "name": "กะหล่ำปลีทอดน้ำปลา",
+   "categoryId": "veg",
+   "course": "veg",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 0,
+   "unit": "จาน",
+   "setOnly": true,
+   "active": true,
+   "sort": 146
+  },
+  {
+   "id": "m147",
+   "name": "แกงส้มผักปลาทอด",
+   "categoryId": "soup",
+   "course": "soup",
+   "tags": [],
+   "variants": [],
+   "priceType": "fixed",
+   "price": 0,
+   "unit": "จาน",
+   "setOnly": true,
+   "active": true,
+   "sort": 147
+  }
+ ],
+ "menuSets": [
+  {
+   "id": "set-emperor",
+   "name": "ชุดจักรพรรดิ",
+   "pricePerTable": 4500,
+   "servingSize": "large",
+   "items": [
+    {
+     "course": "appetizer",
+     "menuItemId": "m002",
+     "name": "สลัดกุ้งร้อน"
+    },
+    {
+     "course": "main",
+     "menuItemId": "m001",
+     "name": "เป็ดเทียมเทียม"
+    },
+    {
+     "course": "fish",
+     "menuItemId": "m049",
+     "name": "ปลาหิมะนึ่งซีอิ้ว"
+    },
+    {
+     "course": "yum",
+     "menuItemId": "m061",
+     "name": "ยำรวมมิตรทะเล"
+    },
+    {
+     "course": "veg",
+     "menuItemId": "m144",
+     "name": "ผักบุ้งจักรพรรดิ"
+    },
+    {
+     "course": "soup",
+     "menuItemId": "m017",
+     "name": "ซุปกระเพาะปลาน้ำแดง"
+    },
+    {
+     "course": "noodle",
+     "menuItemId": "m098",
+     "name": "เส้นหมี่ราดหน้าหมู",
+     "variant": "หมู"
+    },
+    {
+     "course": "dessert",
+     "menuItemId": "m129",
+     "name": "ผลไม้รวมตามฤดูกาล"
+    }
+   ],
+   "drinksText": "เก๊กฮวยเย็น × 2, น้ำดื่มเย็นสะอาด",
+   "includes": [
+    "water",
+    "chrysanthemum"
+   ],
+   "visibility": "all",
+   "addOnOffers": [],
+   "note": "",
+   "active": true,
+   "sort": 1,
+   "seats": "10–12 ที่"
+  },
+  {
+   "id": "set-hongte",
+   "name": "ชุดฮ่องเต้",
+   "pricePerTable": 3400,
+   "servingSize": "large",
+   "items": [
+    {
+     "course": "appetizer",
+     "menuItemId": "m019",
+     "name": "ออเดิร์ฟร้อน"
+    },
+    {
+     "course": "main",
+     "menuItemId": "m001",
+     "name": "เป็ดเทียมเทียม"
+    },
+    {
+     "course": "fish",
+     "menuItemId": "m015",
+     "name": "ปลากะพงทอดน้ำปลา"
+    },
+    {
+     "course": "veg",
+     "menuItemId": "m059",
+     "name": "ผักบุ้งฮ่องเต้"
+    },
+    {
+     "course": "yum",
+     "menuItemId": "m061",
+     "name": "ยำรวมมิตรทะเล"
+    },
+    {
+     "course": "soup",
+     "menuItemId": "m068",
+     "name": "ซุปเยื่อไผ่เห็ดหอมน้ำใส"
+    },
+    {
+     "course": "rice",
+     "menuItemId": "m093",
+     "name": "ข้าวผัดปู",
+     "variant": "ปู"
+    },
+    {
+     "course": "dessert",
+     "menuItemId": "m125",
+     "name": "สาคูแคนตาลูป"
+    }
+   ],
+   "drinksText": "เก๊กฮวย ร้อน-เย็น, น้ำดื่ม-น้ำแข็ง",
+   "includes": [
+    "water",
+    "chrysanthemum"
+   ],
+   "visibility": "all",
+   "addOnOffers": [],
+   "note": "",
+   "active": true,
+   "sort": 2,
+   "seats": "10–12 ที่"
+  },
+  {
+   "id": "set-chaosua",
+   "name": "ชุดเจ้าสัว",
+   "pricePerTable": 3000,
+   "servingSize": "large",
+   "items": [
+    {
+     "course": "appetizer",
+     "menuItemId": "m019",
+     "name": "ออเดิร์ฟร้อน"
+    },
+    {
+     "course": "yum",
+     "menuItemId": "m064",
+     "name": "หมูมะนาว"
+    },
+    {
+     "course": "main",
+     "menuItemId": "m005",
+     "name": "ไก่แช่เหล้า"
+    },
+    {
+     "course": "fish",
+     "menuItemId": "m045",
+     "name": "ปลาทับทิมยำสมุนไพร"
+    },
+    {
+     "course": "veg",
+     "menuItemId": "m145",
+     "name": "ผักบุ้งเจ้าสัว"
+    },
+    {
+     "course": "soup",
+     "menuItemId": "m069",
+     "name": "ซุปเต้าหู้ทรงเครื่องน้ำแดง"
+    },
+    {
+     "course": "noodle",
+     "menuItemId": "m098",
+     "name": "เส้นหมี่ราดหน้าหมู",
+     "variant": "หมู"
+    },
+    {
+     "course": "dessert",
+     "menuItemId": "m129",
+     "name": "ผลไม้รวมตามฤดูกาล"
+    }
+   ],
+   "drinksText": "เก๊กฮวย ร้อน-เย็น, น้ำดื่ม-น้ำแข็ง",
+   "includes": [
+    "water",
+    "chrysanthemum"
+   ],
+   "visibility": "all",
+   "addOnOffers": [],
+   "note": "",
+   "active": true,
+   "sort": 3,
+   "seats": "10–12 ที่"
+  },
+  {
+   "id": "set-crownprince",
+   "name": "ชุดองค์รัชทายาท",
+   "pricePerTable": 2500,
+   "servingSize": "medium",
+   "items": [
+    {
+     "course": "appetizer",
+     "menuItemId": "m002",
+     "name": "สลัดกุ้งร้อน"
+    },
+    {
+     "course": "main",
+     "menuItemId": "m006",
+     "name": "ไก่ทอดเกลือ"
+    },
+    {
+     "course": "veg",
+     "menuItemId": "m146",
+     "name": "กะหล่ำปลีทอดน้ำปลา"
+    },
+    {
+     "course": "appetizer",
+     "menuItemId": "m032",
+     "name": "ไข่เยี่ยวม้ากะเพรากรอบ"
+    },
+    {
+     "course": "soup",
+     "menuItemId": "m073",
+     "name": "ต้มแซ่บเอ็นหมู",
+     "variant": "เอ็นหมู"
+    },
+    {
+     "course": "rice",
+     "menuItemId": "m094",
+     "name": "ข้าวผัดหยางโจว"
+    },
+    {
+     "course": "fish",
+     "menuItemId": "m045",
+     "name": "ปลาทับทิมยำสมุนไพร"
+    },
+    {
+     "course": "dessert",
+     "menuItemId": "m129",
+     "name": "ผลไม้รวมตามฤดูกาล"
+    }
+   ],
+   "drinksText": "น้ำดื่ม-น้ำแข็ง",
+   "includes": [
+    "water"
+   ],
+   "addOnOffers": [
+    {
+     "menuItemId": "m001",
+     "name": "เป็ดเทียมเทียม",
+     "specialPrice": 620,
+     "maxQty": 1
+    },
+    {
+     "menuItemId": "m035",
+     "name": "บะหมี่อบขาเป็ด",
+     "specialPrice": 350,
+     "maxQty": 1
+    }
+   ],
+   "visibility": "all",
+   "note": "",
+   "active": true,
+   "sort": 4,
+   "seats": "5–6 ที่"
+  },
+  {
+   "id": "set-sonInLaw",
+   "name": "ชุดราชบุตรเขย",
+   "pricePerTable": 2500,
+   "servingSize": "large",
+   "visibility": "regularOnly",
+   "note": "ชุดจัดให้ตามคำเรียกร้องสำหรับลูกค้าประจำ (รอยืนยันขนาดจานและเครื่องดื่ม)",
+   "items": [
+    {
+     "course": "main",
+     "menuItemId": "m006",
+     "name": "ไก่ทอดเกลือ"
+    },
+    {
+     "course": "veg",
+     "menuItemId": "m059",
+     "name": "ผักบุ้งฮ่องเต้"
+    },
+    {
+     "course": "yum",
+     "menuItemId": "m030",
+     "name": "ยำขาหมูยัดไส้"
+    },
+    {
+     "course": "noodle",
+     "menuItemId": "m013",
+     "name": "โกยซีหมี่ไก่",
+     "variant": "ไก่"
+    },
+    {
+     "course": "soup",
+     "menuItemId": "m147",
+     "name": "แกงส้มผักปลาทอด"
+    },
+    {
+     "course": "fish",
+     "menuItemId": "m045",
+     "name": "ปลาทับทิมยำสมุนไพร"
+    },
+    {
+     "course": "rice",
+     "menuItemId": "m093",
+     "name": "ข้าวผัดปู",
+     "variant": "ปู"
+    },
+    {
+     "course": "dessert",
+     "menuItemId": "m129",
+     "name": "ผลไม้รวมตามฤดูกาล"
+    }
+   ],
+   "drinksText": "",
+   "includes": [],
+   "addOnOffers": [],
+   "active": true,
+   "sort": 5,
+   "seats": "10–12 ที่"
+  }
+ ],
+ "services": [
+  {
+   "id": "svc-music",
+   "name": "นักดนตรี",
+   "type": "music",
+   "price": 600,
+   "unit": "งาน",
+   "priceEditable": false,
+   "active": true,
+   "sort": 1
+  },
+  {
+   "id": "svc-room",
+   "name": "ห้องพักพร้อมอาหารเช้า",
+   "type": "room",
+   "price": 750,
+   "unit": "ห้อง",
+   "priceEditable": true,
+   "active": true,
+   "sort": 2
+  },
+  {
+   "id": "svc-overtime",
+   "name": "ค่าล่วงเวลา",
+   "type": "overtime",
+   "price": 1000,
+   "unit": "ชั่วโมง",
+   "priceEditable": false,
+   "active": true,
+   "sort": 3
+  },
+  {
+   "id": "svc-decor",
+   "name": "ค่าตกแต่งสถานที่",
+   "type": "decor",
+   "price": 0,
+   "unit": "งาน",
+   "priceEditable": true,
+   "active": true,
+   "sort": 4
+  },
+  {
+   "id": "svc-photobooth",
+   "name": "ซุ้มถ่ายรูป",
+   "type": "decor",
+   "price": 0,
+   "unit": "ซุ้ม",
+   "priceEditable": true,
+   "active": true,
+   "sort": 5
+  },
+  {
+   "id": "svc-sound",
+   "name": "เครื่องเสียง",
+   "type": "equipment",
+   "price": 0,
+   "unit": "ชุด",
+   "priceEditable": true,
+   "active": true,
+   "sort": 6
+  }
+ ],
+ "focRules": [
+  {
+   "id": "foc-drink-3500",
+   "group": "drinks",
+   "order": 1,
+   "name": "เครื่องดื่มฟรี (โต๊ะละ 3,500 ขึ้นไป)",
+   "conditions": [
+    {
+     "field": "pricePerTable",
+     "op": ">=",
+     "value": 3500
+    }
+   ],
+   "effect": {
+    "kind": "free",
+    "items": [
+     {
+      "key": "water",
+      "label": "น้ำเปล่า-น้ำแข็ง",
+      "qtyPer": "table",
+      "qty": 1,
+      "unit": "ชุด/โต๊ะ",
+      "unitValue": 0
+     },
+     {
+      "key": "chrysanthemum",
+      "label": "เก๊กฮวย",
+      "qtyPer": "table",
+      "qty": 1,
+      "unit": "ชุด/โต๊ะ",
+      "unitValue": 0
+     }
+    ]
+   },
+   "active": true
+  },
+  {
+   "id": "foc-drink-3000",
+   "group": "drinks",
+   "order": 2,
+   "name": "น้ำเปล่า-น้ำแข็งฟรี (โต๊ะละ 3,000 ขึ้นไป)",
+   "conditions": [
+    {
+     "field": "pricePerTable",
+     "op": ">=",
+     "value": 3000
+    }
+   ],
+   "effect": {
+    "kind": "free",
+    "items": [
+     {
+      "key": "water",
+      "label": "น้ำเปล่า-น้ำแข็ง",
+      "qtyPer": "table",
+      "qty": 1,
+      "unit": "ชุด/โต๊ะ",
+      "unitValue": 0
+     }
+    ]
+   },
+   "active": true
+  },
+  {
+   "id": "foc-music-free",
+   "group": "music",
+   "order": 1,
+   "name": "นักดนตรีฟรี",
+   "conditions": [
+    {
+     "field": "pricePerTable",
+     "op": ">",
+     "value": 3000
+    },
+    {
+     "field": "tables",
+     "op": ">",
+     "value": 5
+    }
+   ],
+   "effect": {
+    "kind": "setPrice",
+    "serviceId": "svc-music",
+    "price": 0
+   },
+   "active": true
+  },
+  {
+   "id": "foc-music-half",
+   "group": "music",
+   "order": 2,
+   "name": "นักดนตรีลด 50%",
+   "conditions": [
+    {
+     "field": "pricePerTable",
+     "op": ">=",
+     "value": 3000
+    },
+    {
+     "field": "tables",
+     "op": ">=",
+     "value": 3
+    }
+   ],
+   "effect": {
+    "kind": "setPrice",
+    "serviceId": "svc-music",
+    "price": 300
+   },
+   "active": true
+  }
+ ],
+ "settings": {
+  "hotelName": "โรงแรมปัญจดารา",
+  "hotelNameEn": "Punjadara Hotel",
+  "address": "",
+  "phone": "044-257567, 063-8614696",
+  "vatRate": 0.07,
+  "rooms": [
+   {
+    "name": "สุพรรณหงส์",
+    "floor": "ชั้น 1"
+   },
+   {
+    "name": "เมขลา",
+    "floor": "ชั้น 1"
+   },
+   {
+    "name": "ปัญจดารา 1",
+    "floor": ""
+   },
+   {
+    "name": "ปัญจดารา 2",
+    "floor": ""
+   },
+   {
+    "name": "ปัญจดารา 3",
+    "floor": ""
+   },
+   {
+    "name": "ปัญจดารา 4",
+    "floor": ""
+   },
+   {
+    "name": "ปัญจดารา 5",
+    "floor": ""
+   },
+   {
+    "name": "ปัญจดารา 6",
+    "floor": ""
+   },
+   {
+    "name": "กินรี",
+    "floor": "ชั้น 7"
+   },
+   {
+    "name": "นอกสถานที่",
+    "floor": ""
+   }
+  ],
+  "eventTypes": [
+   "ประชุม",
+   "กินเลี้ยง",
+   "เกษียณอายุ",
+   "ส่งอาหารนอกสถานที่",
+   "อื่นๆ"
+  ],
+  "tableLayouts": [
+   "โต๊ะจีน",
+   "โต๊ะกลม",
+   "โต๊ะเหลี่ยม",
+   "ชั้นเรียน",
+   "ตัวยู",
+   "ใส่จาน (ไม่จัดโต๊ะ)"
+  ],
+  "remarkPresets": [
+   "ราคาอาหารยังไม่รวมภาษีมูลค่าเพิ่ม 7%",
+   "เครื่องดื่มขายแยกทุกชนิด",
+   "ลูกค้านำเครื่องดื่มมาเอง",
+   "เกินเวลาคิดชั่วโมงละ 1,000 บาท",
+   "ชำระมัดจำแล้ว ____ บาท เมื่อวันที่ ____"
+  ],
+  "mealTemplates": [
+   {
+    "id": "chinese",
+    "name": "โต๊ะจีน / กินเลี้ยง",
+    "slots": [
+     {
+      "label": "ทานเล่น / ออเดิร์ฟ",
+      "courses": [
+       "appetizer"
+      ]
+     },
+     {
+      "label": "ยำ / สลัด",
+      "courses": [
+       "yum"
+      ]
+     },
+     {
+      "label": "ทอด / จานหลัก",
+      "courses": [
+       "main",
+       "shrimp",
+       "crab"
+      ]
+     },
+     {
+      "label": "ปลา / นึ่ง",
+      "courses": [
+       "fish"
+      ]
+     },
+     {
+      "label": "ผัด / ผัก",
+      "courses": [
+       "veg"
+      ]
+     },
+     {
+      "label": "ต้ม / ซุป",
+      "courses": [
+       "soup"
+      ]
+     },
+     {
+      "label": "เส้น หรือ ข้าว",
+      "courses": [
+       "noodle",
+       "rice"
+      ]
+     },
+     {
+      "label": "ของหวาน / ผลไม้",
+      "courses": [
+       "dessert"
+      ]
+     }
+    ]
+   },
+   {
+    "id": "plated",
+    "name": "ใส่จาน / ส่งนอกสถานที่",
+    "slots": [
+     {
+      "label": "ยำ / สลัด",
+      "courses": [
+       "yum",
+       "appetizer"
+      ]
+     },
+     {
+      "label": "ต้ม / ซุป",
+      "courses": [
+       "soup"
+      ]
+     },
+     {
+      "label": "ผัด / ผัก",
+      "courses": [
+       "veg"
+      ]
+     },
+     {
+      "label": "เส้น หรือ ข้าว",
+      "courses": [
+       "noodle",
+       "rice"
+      ]
+     },
+     {
+      "label": "ของหวาน / ผลไม้",
+      "courses": [
+       "dessert"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "importNotes": [
+  "สลัดกุ้งร้อน: รวมรายการซ้ำจาก เมนูแนะนำ, ออเดิร์ฟ",
+  "กุ้งแช่น้ำปลา: รวมรายการซ้ำจาก เมนูแนะนำ, กุ้ง",
+  "พล่าปูนิ่ม: รวมรายการซ้ำจาก เมนูแนะนำ, ปู",
+  "บะหมี่ฮกเกี้ยน: รวมรายการซ้ำจาก เมนูแนะนำ, ข้าวราด",
+  "โกยซีหมี่: รวมรายการซ้ำจาก เมนูแนะนำ, ข้าวราด",
+  "เส้นหมี่ราดหน้าปลาเต้าซี่: ราคาในไฟล์ไม่ตรงกัน: 400, 450 (ใช้ 450)",
+  "ปลากะพงทอดน้ำปลา: รวมรายการซ้ำจาก เมนูแนะนำ, ปลา",
+  "ซุปกระเพาะปลาน้ำแดง: รวมรายการซ้ำจาก เมนูแนะนำ, ซุป",
+  "ซุปหูฉลามน้ำแดง: รวมรายการซ้ำจาก เมนูแนะนำ, ซุป",
+  "ยำขาหมูยัดไส้: รวมรายการซ้ำจาก ออเดิร์ฟ, ยำ",
+  "โค้ก: ราคา 25 / 50 — ยืนยันชื่อขนาด"
+ ]
+}

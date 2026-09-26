@@ -1,0 +1,41 @@
+rules_version = '2';
+
+// PunjadaraPOS — Cloud Storage rules
+// The MVP does not upload files (logo is bundled with the app, PDFs are generated in the
+// browser). These rules are ready for later: menu photos / logo under /public, and archived
+// BEO PDFs under /beo-pdf. Roles are read from Firestore /users/{uid}.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function profile() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    function isActive() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && profile().active == true;
+    }
+    function isAdmin() { return isActive() && profile().role == 'admin'; }
+
+    // menu photos, logo (Admin uploads, staff read)
+    match /public/{file=**} {
+      allow read: if isActive();
+      allow write: if isAdmin()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // archived BEO PDFs (any active staff can upload a PDF for a BEO, Admin can delete)
+    match /beo-pdf/{beoId}/{file} {
+      allow read: if isActive();
+      allow create: if isActive()
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType == 'application/pdf';
+      allow delete: if isAdmin();
+    }
+
+    match /{all=**} {
+      allow read, write: if false;
+    }
+  }
+}

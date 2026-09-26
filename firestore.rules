@@ -1,0 +1,153 @@
+rules_version = '2';
+
+// PunjadaraPOS — Firestore security rules
+// Roles live in /users/{uid} (role: 'sales' | 'admin', active: bool) and can only be
+// written by an Admin. A signed-in account WITHOUT a users doc (or with active=false)
+// can read or write nothing.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() { return request.auth != null; }
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function isActive() {
+      return signedIn() && exists(userPath()) && get(userPath()).data.active == true;
+    }
+    function isAdmin() { return isActive() && get(userPath()).data.role == 'admin'; }
+    function isOwner(d) { return d.salesUid == request.auth.uid; }
+    function str(v, max) { return v is string && v.size() <= max; }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['email', 'displayName', 'role', 'active'])
+        && request.resource.data.role in ['sales', 'admin']
+        && request.resource.data.active is bool
+        && str(request.resource.data.displayName, 100)
+        // an Admin cannot demote or deactivate themself (prevents lock-out)
+        && (uid != request.auth.uid
+            || (request.resource.data.role == 'admin' && request.resource.data.active == true));
+      allow delete: if isAdmin() && uid != request.auth.uid;
+    }
+
+    // ---------- catalog: read by staff, written by Admin ----------
+    match /categories/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+    match /menuItems/{id} {
+      allow read: if isActive();
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin()
+        && str(request.resource.data.name, 150)
+        && request.resource.data.price is number && request.resource.data.price >= 0;
+    }
+    match /menuSets/{id} {
+      allow read: if isActive();
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin()
+        && str(request.resource.data.name, 150)
+        && request.resource.data.pricePerTable is number && request.resource.data.pricePerTable >= 0
+        && request.resource.data.items is list && request.resource.data.items.size() <= 40;
+    }
+    match /services/{id} {
+      allow read: if isActive();
+      allow delete: if isAdmin();
+      allow create, update: if isAdmin()
+        && str(request.resource.data.name, 150)
+        && request.resource.data.price is number && request.resource.data.price >= 0;
+    }
+    match /focRules/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+    match /settings/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+    match /meta/{id} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // ---------- customers (doc id = phone digits) ----------
+    match /customers/{phone} {
+      allow read: if isActive();
+      allow create, update: if isActive()
+        && phone.matches('^[0-9]{9,10}$')
+        && str(request.resource.data.name, 200)
+        && request.resource.data.beoCount is int;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- running numbers ----------
+    match /counters/{id} {
+      allow read: if isActive();
+      allow create: if isActive() && id.matches('^beo-[0-9]{4}$')
+        && request.resource.data.keys().hasOnly(['seq']) && request.resource.data.seq == 1;
+      allow update: if isActive()
+        && request.resource.data.keys().hasOnly(['seq'])
+        && request.resource.data.seq == resource.data.seq + 1;
+      allow delete: if false;
+    }
+
+    // ---------- BEO documents ----------
+    function validBeo(d) {
+      return d.keys().hasAll(['status', 'customer', 'event', 'seating', 'lines', 'totals', 'salesUid', 'salesName'])
+        && d.status in ['draft', 'confirmed', 'completed', 'cancelled']
+        && str(d.customer.name, 200)
+        && str(d.event.date, 10)
+        && d.lines is list && d.lines.size() <= 200
+        && d.totals.grandTotal is number
+        && str(d.note, 5000)
+        && str(d.salesUid, 128);
+    }
+
+    match /beos/{id} {
+      allow read: if isAdmin() || (isActive() && isOwner(resource.data));
+
+      // Sales create their own drafts, or confirm a new BEO directly
+      allow create: if isActive()
+        && validBeo(request.resource.data)
+        && (isAdmin()
+            || (isOwner(request.resource.data) && request.resource.data.status in ['draft', 'confirmed']));
+
+      // Sales may edit only their own DRAFTS (and confirm them). After confirmation only Admin edits.
+      allow update: if isActive()
+        && validBeo(request.resource.data)
+        && (isAdmin()
+            || (isOwner(resource.data)
+                && resource.data.status == 'draft'
+                && isOwner(request.resource.data)
+                && request.resource.data.status in ['draft', 'confirmed']));
+
+      allow delete: if isAdmin();
+
+      // revision history: append-only audit trail
+      match /revisions/{rev} {
+        allow read: if isAdmin()
+          || (isActive() && get(/databases/$(database)/documents/beos/$(id)).data.salesUid == request.auth.uid);
+        allow create: if isAdmin()
+          || (isActive() && getAfter(/databases/$(database)/documents/beos/$(id)).data.salesUid == request.auth.uid);
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------- room bookings (public to staff, no customer data) ----------
+    match /bookings/{beoId} {
+      allow read: if isActive();
+      allow create, update: if isAdmin()
+        || (isActive()
+            && request.resource.data.salesUid == request.auth.uid
+            && getAfter(/databases/$(database)/documents/beos/$(beoId)).data.salesUid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // everything else is closed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

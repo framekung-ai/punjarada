@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "beos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "salesUid", "order": "ASCENDING" },
+        { "fieldPath": "event.date", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

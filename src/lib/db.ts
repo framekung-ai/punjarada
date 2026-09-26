@@ -1,0 +1,295 @@
+import {
+  addDoc, collection, deleteDoc, doc, getDoc, getDocs, increment, limit, orderBy, query,
+  runTransaction, serverTimestamp, setDoc, updateDoc, where, writeBatch,
+} from 'firebase/firestore'
+import { deleteApp, initializeApp } from 'firebase/app'
+import { createUserWithEmailAndPassword, getAuth, signOut } from 'firebase/auth'
+import { db, firebaseConfig } from './firebase'
+import type {
+  AppUser, Beo, Catalog, Category, CustomerRecord, FocRule, MenuItem, MenuSet, Service, Settings,
+} from './types'
+import { buddhistYear } from './thai'
+
+// ---------------- Catalog (menu, sets, services, FOC, settings) ----------------
+// Quota saver: the whole catalog (~170 docs) is cached in localStorage together with
+// meta/catalog.version. On app start we read ONE document; the full catalog is only
+// downloaded again when an Admin has changed something (version bumped).
+
+export const CATALOG_COLLECTIONS = ['categories', 'menuItems', 'menuSets', 'services', 'focRules'] as const
+export type CatalogCollection = (typeof CATALOG_COLLECTIONS)[number]
+
+const LS_KEY = 'pjd-catalog'
+
+function readCache(): Catalog | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    return raw ? (JSON.parse(raw) as Catalog) : null
+  } catch {
+    return null
+  }
+}
+function writeCache(c: Catalog) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(c)) } catch { /* storage full or blocked */ }
+}
+export function clearCatalogCache() {
+  try { localStorage.removeItem(LS_KEY) } catch { /* ignore */ }
+}
+
+async function getAll<T>(name: string): Promise<T[]> {
+  const snap = await getDocs(collection(db, name))
+  return snap.docs.map((d) => ({ ...(d.data() as object), id: d.id }) as T)
+}
+
+/** Returns null when the database has not been seeded yet. */
+export async function loadCatalog(force = false): Promise<Catalog | null> {
+  const meta = await getDoc(doc(db, 'meta', 'catalog'))
+  if (!meta.exists()) return null
+  const version = Number(meta.data().version ?? 0)
+  const cached = readCache()
+  if (!force && cached && cached.version === version) return cached
+  const [categories, menuItems, menuSets, services, focRules, settingsSnap] = await Promise.all([
+    getAll<Category>('categories'),
+    getAll<MenuItem>('menuItems'),
+    getAll<MenuSet>('menuSets'),
+    getAll<Service>('services'),
+    getAll<FocRule>('focRules'),
+    getDoc(doc(db, 'settings', 'app')),
+  ])
+  const bySort = <T extends { sort?: number }>(a: T, b: T) => (a.sort ?? 0) - (b.sort ?? 0)
+  const catalog: Catalog = {
+    version,
+    categories: categories.sort(bySort),
+    menuItems: menuItems.sort(bySort),
+    menuSets: menuSets.sort(bySort),
+    services: services.sort(bySort),
+    focRules,
+    settings: settingsSnap.data() as Settings,
+  }
+  writeCache(catalog)
+  return catalog
+}
+
+async function bumpCatalog() {
+  await setDoc(doc(db, 'meta', 'catalog'), { version: increment(1), updatedAt: serverTimestamp() }, { merge: true })
+}
+
+function clean<T extends object>(o: T): T {
+  // Firestore rejects `undefined`
+  return JSON.parse(JSON.stringify(o)) as T
+}
+
+export async function saveCatalogDoc(name: CatalogCollection, id: string, data: object) {
+  const { id: _omit, ...rest } = data as { id?: string }
+  void _omit
+  await setDoc(doc(db, name, id), clean(rest))
+  await bumpCatalog()
+}
+
+export async function deleteCatalogDoc(name: CatalogCollection, id: string) {
+  await deleteDoc(doc(db, name, id))
+  await bumpCatalog()
+}
+
+export async function saveSettings(s: Settings) {
+  await setDoc(doc(db, 'settings', 'app'), clean(s))
+  await bumpCatalog()
+}
+
+export function newId(name: CatalogCollection): string {
+  return doc(collection(db, name)).id
+}
+
+/** One-time import of the starter data (menu CSV, 5 sets, services, FOC rules, settings). */
+export async function seedCatalog(seed: Omit<Catalog, 'version'>, onProgress?: (done: number, total: number) => void) {
+  const ops: [string, string, object][] = []
+  for (const name of CATALOG_COLLECTIONS) {
+    for (const d of seed[name] as { id: string }[]) {
+      const { id, ...rest } = d
+      ops.push([name, id, rest])
+    }
+  }
+  ops.push(['settings', 'app', seed.settings])
+  const total = ops.length
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const [name, id, data] of ops.slice(i, i + 400)) batch.set(doc(db, name, id), clean(data))
+    await batch.commit()
+    onProgress?.(Math.min(i + 400, total), total)
+  }
+  await setDoc(doc(db, 'meta', 'catalog'), { version: Date.now(), updatedAt: serverTimestamp() })
+}
+
+// ---------------- Users ----------------
+
+export async function getAppUser(uid: string): Promise<AppUser | null> {
+  const s = await getDoc(doc(db, 'users', uid))
+  return s.exists() ? ({ ...(s.data() as Omit<AppUser, 'uid'>), uid }) : null
+}
+
+export async function listUsers(): Promise<AppUser[]> {
+  const snap = await getDocs(collection(db, 'users'))
+  return snap.docs.map((d) => ({ ...(d.data() as Omit<AppUser, 'uid'>), uid: d.id }))
+}
+
+export async function saveUser(u: AppUser) {
+  const { uid, ...rest } = u
+  await setDoc(doc(db, 'users', uid), rest)
+}
+
+/** Creates a login without signing the Admin out (uses a throw-away secondary app). */
+export async function createUserAccount(email: string, password: string, displayName: string, role: AppUser['role']) {
+  const secondary = initializeApp(firebaseConfig, `create-${Date.now()}`)
+  try {
+    const cred = await createUserWithEmailAndPassword(getAuth(secondary), email, password)
+    await signOut(getAuth(secondary))
+    const u: AppUser = { uid: cred.user.uid, email, displayName, role, active: true }
+    await saveUser(u)
+    return u
+  } finally {
+    await deleteApp(secondary)
+  }
+}
+
+// ---------------- Customers ----------------
+
+export const phoneKey = (p: string) => p.replace(/\D/g, '')
+
+export async function findCustomer(phone: string): Promise<CustomerRecord | null> {
+  const k = phoneKey(phone)
+  if (k.length < 9) return null
+  const s = await getDoc(doc(db, 'customers', k))
+  return s.exists() ? (s.data() as CustomerRecord) : null
+}
+
+// ---------------- BEO ----------------
+
+const beosCol = collection(db, 'beos')
+
+function beoPayload(b: Beo) {
+  const { id: _id, createdAt: _c, updatedAt: _u, confirmedAt: _cf, ...rest } = b
+  void _id; void _c; void _u; void _cf
+  return clean(rest)
+}
+
+export async function createBeo(b: Beo): Promise<string> {
+  const ref = await addDoc(beosCol, { ...beoPayload(b), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+  return ref.id
+}
+
+export async function updateBeo(id: string, b: Beo) {
+  await updateDoc(doc(db, 'beos', id), { ...beoPayload(b), updatedAt: serverTimestamp() })
+}
+
+/**
+ * Confirm (or re-save a confirmed BEO): gives it a running number on first confirm,
+ * bumps the revision on later saves, stores a revision snapshot and updates the customer record.
+ */
+export async function confirmBeo(id: string | undefined, b: Beo, actor: { uid: string; name: string }): Promise<{ id: string; docNo: string }> {
+  const ref = id ? doc(db, 'beos', id) : doc(beosCol)
+  return runTransaction(db, async (tx) => {
+    const current = id ? await tx.get(ref) : null
+    const wasConfirmed = !!current?.exists() && current.data()?.status !== 'draft'
+    let docNo = (current?.data()?.docNo as string | null) ?? b.docNo
+    const custKey = phoneKey(b.customer.phone)
+    const custRef = custKey.length >= 9 ? doc(db, 'customers', custKey) : null
+    const cust = custRef ? await tx.get(custRef) : null
+    if (!docNo) {
+      const year = buddhistYear(b.event.date || undefined)
+      const cRef = doc(db, 'counters', `beo-${year}`)
+      const c = await tx.get(cRef)
+      const next = (c.exists() ? Number(c.data().seq) : 0) + 1
+      if (c.exists()) tx.update(cRef, { seq: next })
+      else tx.set(cRef, { seq: next })
+      const mm = (b.event.date || '').slice(5, 7) || '00'
+      docNo = `BEO-${year}-${mm}-${String(next).padStart(4, '0')}`
+    }
+    const revision = wasConfirmed ? (b.revision ?? 0) + 1 : 0
+    const status = b.status === 'draft' ? 'confirmed' : b.status
+    const data = {
+      ...beoPayload({ ...b, docNo, revision, status }),
+      updatedAt: serverTimestamp(),
+      ...(wasConfirmed ? {} : { confirmedAt: serverTimestamp() }),
+      ...(current?.exists() ? {} : { createdAt: serverTimestamp() }),
+    }
+    if (current?.exists()) tx.update(ref, data)
+    else tx.set(ref, data)
+    tx.set(doc(db, 'beos', ref.id, 'revisions', String(revision)), {
+      ...beoPayload({ ...b, docNo, revision, status }),
+      savedAt: serverTimestamp(), savedBy: actor.uid, savedByName: actor.name,
+    })
+    tx.set(doc(db, 'bookings', ref.id), {
+      beoId: ref.id, date: b.event.date, room: b.event.room, start: b.event.start, end: b.event.end,
+      eventName: b.event.name, salesName: b.salesName, status, salesUid: b.salesUid,
+    })
+    if (custRef && !wasConfirmed) {
+      const c = b.customer
+      tx.set(custRef, {
+        name: c.name, phone: c.phone, organization: c.organization, address: c.address,
+        contactName: c.contactName, contactPhone: c.contactPhone,
+        beoCount: (cust?.exists() ? Number(cust.data().beoCount ?? 0) : 0) + 1,
+        updatedAt: serverTimestamp(),
+      })
+    }
+    return { id: ref.id, docNo }
+  })
+}
+
+export async function getBeo(id: string): Promise<Beo | null> {
+  const s = await getDoc(doc(db, 'beos', id))
+  return s.exists() ? ({ ...(s.data() as Beo), id: s.id }) : null
+}
+
+/** Admin only (rules). Keeps the public booking in sync. */
+export async function setBeoStatus(id: string, status: Beo['status']) {
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'beos', id), { status, updatedAt: serverTimestamp() })
+  const bk = await getDoc(doc(db, 'bookings', id))
+  if (bk.exists()) batch.update(doc(db, 'bookings', id), { status })
+  await batch.commit()
+}
+
+/** Admin only. Revisions sub-collection is left as an audit trail. */
+export async function deleteBeo(id: string) {
+  const batch = writeBatch(db)
+  batch.delete(doc(db, 'beos', id))
+  batch.delete(doc(db, 'bookings', id))
+  await batch.commit()
+}
+
+export async function listMyBeos(uid: string, max = 50): Promise<Beo[]> {
+  const q = query(beosCol, where('salesUid', '==', uid), orderBy('event.date', 'desc'), limit(max))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ ...(d.data() as Beo), id: d.id }))
+}
+
+/** Admin: BEOs whose event date is within [from, to] (YYYY-MM-DD). */
+export async function listBeosBetween(from: string, to: string, max = 300): Promise<Beo[]> {
+  const q = query(beosCol, where('event.date', '>=', from), where('event.date', '<=', to), orderBy('event.date', 'desc'), limit(max))
+  const snap = await getDocs(q)
+  return snap.docs.map((d) => ({ ...(d.data() as Beo), id: d.id }))
+}
+
+export interface Booking {
+  beoId: string
+  date: string
+  room: string
+  start: string
+  end: string
+  eventName: string
+  salesName: string
+  status: Beo['status']
+}
+
+/**
+ * Room clash check. BEOs hold customer data and Sales may only read their own, so every
+ * confirmed BEO also writes a small public `bookings/{beoId}` doc (date, room, time only).
+ */
+export async function bookingsOnDate(date: string): Promise<Booking[]> {
+  const snap = await getDocs(query(collection(db, 'bookings'), where('date', '==', date)))
+  return snap.docs.map((d) => d.data() as Booking).filter((b) => b.status !== 'cancelled')
+}
+
+export async function listRevisions(id: string) {
+  const snap = await getDocs(query(collection(db, 'beos', id, 'revisions'), orderBy('revision', 'desc')))
+  return snap.docs.map((d) => d.data() as Beo & { savedByName?: string; savedAt?: { toDate(): Date } })
+}
