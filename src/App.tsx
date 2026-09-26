@@ -2,7 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/auth'
 import { CatalogProvider, useCatalog } from './lib/catalog'
-import { Spinner, ToastProvider } from './components/ui'
+import { ConfirmProvider, Spinner, ToastProvider } from './components/ui'
 import { AppShell } from './components/Layout'
 import { Login } from './pages/Login'
 import { MyDocs, SalesHome } from './pages/sales/SalesPages'
@@ -52,9 +52,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <ToastProvider>
-        <AuthProvider>
-          <Gate />
-        </AuthProvider>
+        <ConfirmProvider>
+          <AuthProvider>
+            <Gate />
+          </AuthProvider>
+        </ConfirmProvider>
       </ToastProvider>
     </BrowserRouter>
   )

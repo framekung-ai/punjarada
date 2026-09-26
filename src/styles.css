@@ -262,3 +262,20 @@ table.list tr.click:hover td { background: #f8fafc; }
 .sidenav a svg { flex-shrink: 0; opacity: .85; }
 .admin-menu .chip svg { margin-right: 2px; }
 .badge.pending { background: var(--gold-soft); color: #8a6600; }
+
+/* ---------- confirm modal ---------- */
+.modal-overlay { align-items: center; z-index: 70; padding: 16px; }
+.modal { background: #fff; width: 100%; max-width: 440px; border-radius: 18px; padding: 20px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+.modal h2 { margin-bottom: 8px; }
+.modal-msg { color: var(--ink-2); white-space: pre-line; }
+.modal-msg ul { margin: 6px 0 0; padding-left: 20px; max-height: 180px; overflow-y: auto; }
+.btn.danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn.danger-solid:disabled { opacity: .45; }
+
+/* ---------- bulk selection ---------- */
+.bulkbar { position: sticky; top: 64px; z-index: 15; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; background: #1b2430; color: #fff; border-radius: 12px; }
+.bulkbar .btn { min-height: 36px; }
+table.list td.sel, table.list th.sel { width: 40px; padding-right: 0; }
+table.list input[type=checkbox] { width: 18px; height: 18px; }
+tr.selected td { background: #eef6fc !important; }

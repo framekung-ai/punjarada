@@ -7,7 +7,7 @@ import { useReadyCatalog } from '../lib/catalog'
 import { BeoDocument } from '../beo/BeoDocument'
 import { ScaledDoc } from '../beo/ScaledDoc'
 import { exportJpg, exportPdf, sharePdf } from '../beo/export'
-import { errorText, Sheet, Spinner, StatusBadge, useToast } from '../components/ui'
+import { errorText, Sheet, Spinner, StatusBadge, useToast, useConfirm } from '../components/ui'
 import { money, thaiDate } from '../lib/thai'
 
 export function BeoView() {
@@ -15,6 +15,7 @@ export function BeoView() {
   const { user } = useAuth()
   const catalog = useReadyCatalog()
   const toast = useToast()
+  const confirm = useConfirm()
   const navigate = useNavigate()
   const [beo, setBeo] = useState<Beo | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -39,7 +40,7 @@ export function BeoView() {
   const canEdit = isAdmin || ((beo.status === 'draft' || beo.status === 'pending') && beo.salesUid === user?.uid)
   const editPath = isAdmin ? `/admin/beo/${id}/edit` : `/sales/beo/${id}/edit`
   const changeStatus = async (s: Beo['status']) => {
-    if (s === 'cancelled' && !window.confirm('ยืนยันยกเลิกงานนี้?')) return
+    if (s === 'cancelled' && !(await confirm({ title: 'ยกเลิกงานนี้?', message: `${beo.event.name} · ${beo.docNo ?? ''}\nห้องจะกลับมาว่างในระบบ กด “คืนสถานะยืนยัน” ได้ภายหลัง`, confirmText: 'ยกเลิกงาน', cancelText: 'ไม่ยกเลิก', danger: true }))) return
     try { await setBeoStatus(id, s); setBeo({ ...beo, status: s }); toast('อัปเดตสถานะแล้ว') } catch (e) { toast(errorText(e)) }
   }
 
@@ -73,8 +74,8 @@ export function BeoView() {
           {beo.status === 'cancelled' && <button className="btn small" onClick={() => void changeStatus('confirmed')}>คืนสถานะยืนยัน</button>}
           {beo.status !== 'cancelled' && beo.status !== 'draft' && <button className="btn small danger" onClick={() => void changeStatus('cancelled')}>ยกเลิกงาน</button>}
           <button className="btn small" onClick={() => void listRevisions(id).then(setRevs).catch((e) => toast(errorText(e)))}>ประวัติการแก้ไข</button>
-          <button className="btn small danger" style={{ marginLeft: 'auto' }} onClick={() => {
-            if (!window.confirm('ลบเอกสารนี้ถาวร?')) return
+          <button className="btn small danger" style={{ marginLeft: 'auto' }} onClick={async () => {
+            if (!(await confirm({ title: 'ลบเอกสารนี้ถาวร?', message: `${beo.docNo ?? 'แบบร่าง'} · ${beo.event.name}\nกู้คืนไม่ได้ — ถ้าลูกค้ายกเลิก แนะนำใช้ “ยกเลิกงาน” แทน`, confirmText: 'ลบถาวร', danger: true }))) return
             void deleteBeo(id).then(() => { toast('ลบแล้ว'); navigate('/admin/beos') }).catch((e) => toast(errorText(e)))
           }}>ลบ</button>
         </div>

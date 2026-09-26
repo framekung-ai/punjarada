@@ -5,7 +5,7 @@ import { useReadyCatalog } from '../../lib/catalog'
 import { deleteCatalogDoc, newId, saveCatalogDoc } from '../../lib/db'
 import { displayName } from '../../lib/pricing'
 import { num } from '../../lib/thai'
-import { Field, Sheet } from '../../components/ui'
+import { Field, Sheet , useConfirm } from '../../components/ui'
 import { useSaver } from './CatalogAdmin'
 
 const COURSES = Object.keys(COURSE_LABEL) as CourseId[]
@@ -18,6 +18,7 @@ const blankSet = (): MenuSet => ({
 export function SetsAdmin() {
   const catalog = useReadyCatalog()
   const save = useSaver()
+  const confirm = useConfirm()
   const [edit, setEdit] = useState<MenuSet | null>(null)
   return (
     <div className="stack">
@@ -45,7 +46,7 @@ export function SetsAdmin() {
       </div>
       {edit && <SetEditor value={edit} onClose={() => setEdit(null)}
         onSave={async (s) => { const id = s.id || newId('menuSets'); if (await save(() => saveCatalogDoc('menuSets', id, s))) setEdit(null) }}
-        onDelete={async (s) => { if (window.confirm(`ลบ ${s.name}?`) && await save(() => deleteCatalogDoc('menuSets', s.id), 'ลบแล้ว')) setEdit(null) }} />}
+        onDelete={async (s) => { if (await confirm({ title: `ลบเซ็ต “${s.name}”?`, message: 'เอกสารเก่าที่ใช้เซ็ตนี้ยังแสดงรายการเดิม · ถ้าแค่ไม่อยากให้ Sales เห็น ให้เอาติ๊ก “เปิดใช้งาน” ออก', confirmText: 'ลบเซ็ต', danger: true }) && await save(() => deleteCatalogDoc('menuSets', s.id), 'ลบแล้ว')) setEdit(null) }} />}
     </div>
   )
 }

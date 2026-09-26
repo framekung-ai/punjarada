@@ -165,6 +165,15 @@ export async function deleteCustomer(id: string) {
   await deleteDoc(doc(db, 'customers', id))
 }
 
+/** Admin only. Bulk delete of directory entries (BEOs are not touched). */
+export async function deleteCustomers(ids: string[]) {
+  for (let i = 0; i < ids.length; i += 450) {
+    const batch = writeBatch(db)
+    ids.slice(i, i + 450).forEach((id) => batch.delete(doc(db, 'customers', id)))
+    await batch.commit()
+  }
+}
+
 /** Admin: every BEO of one customer (by phone digits). */
 export async function listBeosByPhone(phone: string): Promise<Beo[]> {
   const snap = await getDocs(query(collection(db, 'beos'), where('customer.phone', '==', phoneKey(phone))))
@@ -274,6 +283,18 @@ export async function setBeoStatus(id: string, status: Beo['status']) {
   const bk = await getDoc(doc(db, 'bookings', id))
   if (bk.exists()) batch.update(doc(db, 'bookings', id), { status })
   await batch.commit()
+}
+
+/** Admin only. Bulk delete BEOs and their room bookings. */
+export async function deleteBeos(ids: string[]) {
+  for (let i = 0; i < ids.length; i += 200) {
+    const batch = writeBatch(db)
+    for (const id of ids.slice(i, i + 200)) {
+      batch.delete(doc(db, 'beos', id))
+      batch.delete(doc(db, 'bookings', id))
+    }
+    await batch.commit()
+  }
 }
 
 /** Admin only. Revisions sub-collection is left as an audit trail. */

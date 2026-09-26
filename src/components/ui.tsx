@@ -114,3 +114,60 @@ export function errorText(e: unknown): string {
   if (code.includes('failed-precondition')) return 'ฐานข้อมูลยังไม่พร้อม (ต้องสร้าง index — ดู firebase.md)'
   return e instanceof Error ? e.message : String(e)
 }
+
+// ---------- confirm modal ----------
+// In-app replacement for window.confirm(). The browser's own dialog can be switched off by the
+// user ("don't show dialogs from this page again") after which it silently answers "No".
+
+export interface ConfirmOptions {
+  title: string
+  message?: ReactNode
+  confirmText?: string
+  cancelText?: string
+  danger?: boolean
+  /** user must type this word before the confirm button is enabled (for irreversible bulk actions) */
+  requireText?: string
+}
+
+type ConfirmFn = (o: ConfirmOptions) => Promise<boolean>
+const ConfirmCtx = createContext<ConfirmFn>(async () => false)
+
+export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<(ConfirmOptions & { resolve: (v: boolean) => void }) | null>(null)
+  const [typed, setTyped] = useState('')
+  const confirm = useCallback<ConfirmFn>((o) => new Promise<boolean>((resolve) => { setTyped(''); setState({ ...o, resolve }) }), [])
+  const close = (v: boolean) => { state?.resolve(v); setState(null) }
+  useEffect(() => {
+    if (!state) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { state.resolve(false); setState(null) } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [state])
+  const blocked = !!state?.requireText && typed.trim() !== state.requireText
+  return (
+    <ConfirmCtx.Provider value={confirm}>
+      {children}
+      {state && (
+        <div className="overlay modal-overlay" onClick={() => close(false)}>
+          <div className="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" onClick={(e) => e.stopPropagation()}>
+            <h2 id="confirm-title">{state.title}</h2>
+            {state.message && <div className="modal-msg">{state.message}</div>}
+            {state.requireText && (
+              <div className="field">
+                <label htmlFor="confirm-typed">พิมพ์ <b>{state.requireText}</b> เพื่อยืนยัน</label>
+                <input id="confirm-typed" className="input" autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} />
+              </div>
+            )}
+            <div className="row" style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+              <button className="btn" onClick={() => close(false)} autoFocus={!state.requireText}>{state.cancelText ?? 'ยกเลิก'}</button>
+              <button className={`btn ${state.danger ? 'danger-solid' : 'primary'}`} disabled={blocked} onClick={() => close(true)}>
+                {state.confirmText ?? 'ยืนยัน'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </ConfirmCtx.Provider>
+  )
+}
+export const useConfirm = () => useContext(ConfirmCtx)

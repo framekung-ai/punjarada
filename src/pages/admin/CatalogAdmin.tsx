@@ -4,7 +4,7 @@ import { COURSE_LABEL } from '../../lib/types'
 import { useCatalog, useReadyCatalog } from '../../lib/catalog'
 import { deleteCatalogDoc, newId, saveCatalogDoc } from '../../lib/db'
 import { num } from '../../lib/thai'
-import { Empty, errorText, Field, Sheet, useToast } from '../../components/ui'
+import { Empty, errorText, Field, Sheet, useToast , useConfirm } from '../../components/ui'
 
 const COURSES = Object.keys(COURSE_LABEL) as CourseId[]
 
@@ -45,6 +45,7 @@ const blankItem = (categoryId: string): MenuItem => ({
 export function MenuAdmin() {
   const catalog = useReadyCatalog()
   const save = useSaver()
+  const confirm = useConfirm()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('all')
   const [edit, setEdit] = useState<MenuItem | null>(null)
@@ -112,7 +113,7 @@ export function MenuAdmin() {
         const ok = await save(() => saveCatalogDoc('menuItems', id, { ...m, id }))
         if (ok) setEdit(null)
       }} onDelete={async (m) => {
-        if (!window.confirm(`ลบ ${m.name}? (เอกสารเก่ายังแสดงชื่อเดิม) แนะนำให้ “ปิดการขาย” แทน`)) return
+        if (!(await confirm({ title: `ลบเมนู “${m.name}”?`, message: 'เอกสารเก่ายังแสดงชื่อและราคาเดิม\nแนะนำให้ “ปิดการขาย” แทน เพื่อเปิดกลับมาได้ง่าย', confirmText: 'ลบเมนู', danger: true }))) return
         const ok = await save(() => deleteCatalogDoc('menuItems', m.id), 'ลบแล้ว')
         if (ok) setEdit(null)
       }} />
@@ -185,6 +186,7 @@ function MenuItemSheet({ item, onClose, onSave, onDelete }: {
 export function CategoriesAdmin() {
   const catalog = useReadyCatalog()
   const save = useSaver()
+  const confirm = useConfirm()
   const [name, setName] = useState('')
   const cats = catalog.categories
   const count = (id: string) => catalog.menuItems.filter((m) => m.categoryId === id).length
@@ -209,7 +211,7 @@ export function CategoriesAdmin() {
                 <td><input className="input" defaultValue={c.name} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== c.name) void save(() => saveCatalogDoc('categories', c.id, { ...c, name: v })) }} /></td>
                 <td className="num">{count(c.id)}</td>
                 <td><input type="checkbox" checked={c.active} onChange={() => void save(() => saveCatalogDoc('categories', c.id, { ...c, active: !c.active }))} /></td>
-                <td><button className="btn small danger" disabled={count(c.id) > 0} title={count(c.id) ? 'ย้ายเมนูออกก่อน' : ''} onClick={() => { if (window.confirm(`ลบหมวด ${c.name}?`)) void save(() => deleteCatalogDoc('categories', c.id), 'ลบแล้ว') }}>ลบ</button></td>
+                <td><button className="btn small danger" disabled={count(c.id) > 0} title={count(c.id) ? 'ย้ายเมนูออกก่อน' : ''} onClick={async () => { if (await confirm({ title: `ลบหมวด “${c.name}”?`, confirmText: 'ลบหมวด', danger: true })) void save(() => deleteCatalogDoc('categories', c.id), 'ลบแล้ว') }}>ลบ</button></td>
               </tr>
             ))}
           </tbody>
@@ -231,6 +233,7 @@ export function CategoriesAdmin() {
 export function ServicesAdmin() {
   const catalog = useReadyCatalog()
   const save = useSaver()
+  const confirm = useConfirm()
   const [edit, setEdit] = useState<Service | null>(null)
   const TYPES: [Service['type'], string][] = [['music', 'ดนตรี'], ['decor', 'ตกแต่ง'], ['equipment', 'อุปกรณ์'], ['room', 'ห้องพัก'], ['overtime', 'ล่วงเวลา'], ['other', 'อื่นๆ']]
   return (
@@ -259,7 +262,7 @@ export function ServicesAdmin() {
       {edit && (
         <Sheet open onClose={() => setEdit(null)} title={edit.id ? 'แก้ไขบริการ' : 'เพิ่มบริการ'} footer={
           <div className="row">
-            {edit.id && <button className="btn danger" onClick={() => { if (window.confirm('ลบบริการนี้?')) void save(() => deleteCatalogDoc('services', edit.id), 'ลบแล้ว').then((ok) => ok && setEdit(null)) }}>ลบ</button>}
+            {edit.id && <button className="btn danger" onClick={async () => { if (await confirm({ title: `ลบบริการ “${edit.name}”?`, confirmText: 'ลบบริการ', danger: true })) void save(() => deleteCatalogDoc('services', edit.id), 'ลบแล้ว').then((ok) => ok && setEdit(null)) }}>ลบ</button>}
             <button className="btn primary grow" disabled={!edit.name.trim()} onClick={() => {
               const id = edit.id || newId('services')
               void save(() => saveCatalogDoc('services', id, edit)).then((ok) => ok && setEdit(null))

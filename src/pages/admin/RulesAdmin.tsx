@@ -5,7 +5,7 @@ import { useReadyCatalog } from '../../lib/catalog'
 import { deleteCatalogDoc, newId, saveCatalogDoc, saveSettings } from '../../lib/db'
 import { ruleMatches } from '../../lib/pricing'
 import { num } from '../../lib/thai'
-import { Field, Sheet } from '../../components/ui'
+import { Field, Sheet , useConfirm } from '../../components/ui'
 import { TagsInput, useSaver } from './CatalogAdmin'
 import { DEFAULT_NAME_PRESETS } from '../wizard/StepBasics'
 
@@ -20,6 +20,7 @@ function condText(c: FocCondition) {
 export function FocAdmin() {
   const catalog = useReadyCatalog()
   const save = useSaver()
+  const confirm = useConfirm()
   const [edit, setEdit] = useState<FocRule | null>(null)
   const [tPrice, setTPrice] = useState(3000)
   const [tTables, setTTables] = useState(5)
@@ -68,7 +69,7 @@ export function FocAdmin() {
 
       {edit && <FocEditor rule={edit} onClose={() => setEdit(null)}
         onSave={async (r) => { const id = r.id || newId('focRules'); if (await save(() => saveCatalogDoc('focRules', id, r))) setEdit(null) }}
-        onDelete={async (r) => { if (window.confirm('ลบกฎนี้?') && await save(() => deleteCatalogDoc('focRules', r.id), 'ลบแล้ว')) setEdit(null) }} />}
+        onDelete={async (r) => { if (await confirm({ title: `ลบกฎ “${r.name}”?`, message: 'ถ้าต้องการหยุดชั่วคราว ให้เอาติ๊ก “เปิดใช้งาน” ออกแทน', confirmText: 'ลบกฎ', danger: true }) && await save(() => deleteCatalogDoc('focRules', r.id), 'ลบแล้ว')) setEdit(null) }} />}
     </div>
   )
 }

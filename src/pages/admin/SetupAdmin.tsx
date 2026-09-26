@@ -4,7 +4,7 @@ import type { Catalog, MenuItem } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
 import { clearCatalogCache, newId, saveCatalogDoc, seedCatalog } from '../../lib/db'
 import { num } from '../../lib/thai'
-import { errorText, useToast } from '../../components/ui'
+import { errorText, useToast , useConfirm } from '../../components/ui'
 
 const seedData = seed as unknown as Omit<Catalog, 'version'> & { importNotes: string[] }
 
@@ -45,12 +45,13 @@ function parseCsv(text: string): CsvRow[] {
 export function SetupAdmin() {
   const { catalog, empty, reload } = useCatalog()
   const toast = useToast()
+  const confirm = useConfirm()
   const [busy, setBusy] = useState<string | null>(null)
   const [changes, setChanges] = useState<Change[] | null>(null)
   const [skipped, setSkipped] = useState<string[]>([])
 
   const install = async () => {
-    if (!empty && !window.confirm('ข้อมูลเมนู/เซ็ต/บริการ/กฎ FOC/ตั้งค่า ที่มี id เดียวกันจะถูกเขียนทับด้วยข้อมูลเริ่มต้น ดำเนินการต่อ?')) return
+    if (!empty && !(await confirm({ title: 'ติดตั้งข้อมูลเริ่มต้นซ้ำ?', message: 'เมนู เซ็ต บริการ กฎ FOC และการตั้งค่าที่แก้ไว้ จะถูกเขียนทับด้วยข้อมูลเริ่มต้น', confirmText: 'เขียนทับ', danger: true, requireText: 'ยืนยัน' }))) return
     setBusy('install')
     try {
       await seedCatalog(seedData, (d, t) => setBusy(`install ${d}/${t}`))

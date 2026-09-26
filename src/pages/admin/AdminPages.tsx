@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import type { Beo } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
-import { listBeosBetween, listPendingBeos } from '../../lib/db'
+import { Trash2, X } from 'lucide-react'
+import { deleteBeos, listBeosBetween, listPendingBeos } from '../../lib/db'
 import { money, num, THAI_MONTHS, thaiDate, timeRange, todayIso } from '../../lib/thai'
-import { Empty, errorText, Spinner, StatusBadge } from '../../components/ui'
+import { Empty, errorText, Spinner, StatusBadge, useConfirm, useToast } from '../../components/ui'
 import { CategoriesAdmin, MenuAdmin, ServicesAdmin } from './CatalogAdmin'
 import { SetsAdmin } from './SetsAdmin'
 import { FocAdmin, SettingsAdmin, TemplatesAdmin } from './RulesAdmin'
@@ -66,7 +67,7 @@ function useMonthBeos(ym: string) {
     const [from, to] = monthRange(ym)
     listBeosBetween(from, to).then(setBeos).catch((e) => setErr(errorText(e)))
   }, [ym])
-  return { beos, err }
+  return { beos, err, setBeos }
 }
 
 function Dashboard() {
@@ -140,7 +141,11 @@ function Dashboard() {
 function BeoList() {
   const navigate = useNavigate()
   const [ym, setYm] = useState(todayIso().slice(0, 7))
-  const { beos, err } = useMonthBeos(ym)
+  const { beos, err, setBeos } = useMonthBeos(ym)
+  const confirm = useConfirm()
+  const toast = useToast()
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('all')
   const [sales, setSales] = useState('all')
@@ -148,6 +153,51 @@ function BeoList() {
   const list = (beos ?? []).filter((b) => (status === 'all' || b.status === status) && (sales === 'all' || b.salesName === sales)
     && (!q.trim() || [b.customer.name, b.customer.phone, b.event.name, b.docNo ?? '', b.event.room].some((x) => x.includes(q.trim()))))
     .sort((a, b) => a.event.date.localeCompare(b.event.date))
+
+  const allShownSelected = list.length > 0 && list.every((b) => selected.has(b.id!))
+  const toggle = (k: string) => setSelected((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n })
+  const toggleAll = () => setSelected((s) => {
+    const n = new Set(s)
+    if (allShownSelected) list.forEach((b) => n.delete(b.id!))
+    else list.forEach((b) => n.add(b.id!))
+    return n
+  })
+  const selectedList = (beos ?? []).filter((b) => selected.has(b.id!))
+
+  const removeSelected = async () => {
+    const targets = selectedList
+    if (!targets.length) return
+    const live = targets.filter((b) => b.status === 'confirmed' || b.status === 'completed').length
+    const ok = await confirm({
+      title: `ลบเอกสาร BEO ${targets.length} ใบ?`,
+      message: (
+        <>
+          <ul>{targets.slice(0, 8).map((b) => <li key={b.id}>{b.docNo ?? 'แบบร่าง'} · {b.event.name} · {b.customer.name}</li>)}{targets.length > 8 && <li>และอีก {targets.length - 8} ใบ</li>}</ul>
+          <p style={{ marginBottom: 0 }}>
+            ลบถาวร กู้คืนไม่ได้ และห้องที่จองไว้จะว่างทันที
+            {live > 0 ? ` · มี ${live} ใบที่ยืนยันแล้ว/จัดงานแล้ว — ถ้าต้องการเก็บประวัติ แนะนำให้ “ยกเลิกงาน” แทนการลบ` : ''}
+          </p>
+        </>
+      ),
+      confirmText: `ลบ ${targets.length} ใบ`,
+      danger: true,
+      requireText: 'ลบ',
+    })
+    if (!ok) return
+    setDeleting(true)
+    try {
+      const ids = targets.map((b) => b.id!)
+      await deleteBeos(ids)
+      const gone = new Set(ids)
+      setBeos((l) => (l ?? []).filter((b) => !gone.has(b.id!)))
+      setSelected(new Set())
+      toast(`ลบเอกสาร ${ids.length} ใบแล้ว`)
+    } catch (e) {
+      toast(`ลบไม่สำเร็จ: ${errorText(e)}`)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const exportCsv = () => {
     const rows = [['เลขที่', 'สถานะ', 'วันที่งาน', 'เวลา', 'ห้อง', 'ชื่องาน', 'ลูกค้า', 'โทร', 'หน่วยงาน', 'แขก', 'โต๊ะ', 'ก่อน VAT', 'VAT', 'รวม', 'Sales']]
@@ -163,7 +213,7 @@ function BeoList() {
     <div className="stack">
       <div className="page-head">
         <h1>เอกสาร BEO</h1>
-        <div className="row wrap"><MonthPicker value={ym} onChange={setYm} /><button className="btn small" onClick={exportCsv} disabled={!list.length}>ส่งออก Excel (CSV)</button></div>
+        <div className="row wrap"><MonthPicker value={ym} onChange={(v) => { setYm(v); setSelected(new Set()) }} /><button className="btn small" onClick={exportCsv} disabled={!list.length}>ส่งออก Excel (CSV)</button></div>
       </div>
       <div className="row wrap">
         <input className="input grow" style={{ minWidth: 220 }} type="search" placeholder="ค้นหา ลูกค้า / เบอร์ / ชื่องาน / เลขที่ / ห้อง" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -176,14 +226,26 @@ function BeoList() {
           <button key={k} className={`chip small${status === k ? ' on' : ''}`} onClick={() => setStatus(k)}>{l}</button>
         ))}
       </div>
+      {selected.size > 0 && (
+        <div className="bulkbar" role="region" aria-label="รายการที่เลือก">
+          <strong>เลือก {selected.size} ใบ</strong>
+          <button className="btn small" onClick={() => setSelected(new Set())}><X size={16} aria-hidden /> ล้างที่เลือก</button>
+          <button className="btn small danger-solid" style={{ marginLeft: 'auto' }} disabled={deleting} onClick={() => void removeSelected()}>
+            <Trash2 size={16} aria-hidden /> {deleting ? 'กำลังลบ…' : `ลบ ${selected.size} ใบ`}
+          </button>
+        </div>
+      )}
       {err && <div className="notice warn">{err}</div>}
       {!beos ? <Spinner /> : list.length === 0 ? <Empty>ไม่มีเอกสารในเดือนนี้</Empty> : (
         <div className="table-wrap">
           <table className="list">
-            <thead><tr><th>วันที่งาน</th><th>ชื่องาน / ลูกค้า</th><th className="hide-mobile">ห้อง</th><th className="hide-mobile">Sales</th><th className="num">รวม</th><th>สถานะ</th></tr></thead>
+            <thead><tr><th className="sel"><input type="checkbox" checked={allShownSelected} onChange={toggleAll} aria-label="เลือกทั้งหมดที่แสดง" /></th><th>วันที่งาน</th><th>ชื่องาน / ลูกค้า</th><th className="hide-mobile">ห้อง</th><th className="hide-mobile">Sales</th><th className="num">รวม</th><th>สถานะ</th></tr></thead>
             <tbody>
               {list.map((b) => (
-                <tr key={b.id} className="click" onClick={() => navigate(`/beo/${b.id}`)}>
+                <tr key={b.id} className={`click${selected.has(b.id!) ? ' selected' : ''}`} onClick={() => navigate(`/beo/${b.id}`)}>
+                  <td className="sel" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selected.has(b.id!)} onChange={() => toggle(b.id!)} aria-label={`เลือก ${b.docNo ?? b.event.name}`} />
+                  </td>
                   <td><div>{thaiDate(b.event.date, { short: true })}</div><div className="small muted">{b.docNo ?? '-'}</div></td>
                   <td><div style={{ fontWeight: 600 }}>{b.event.name}</div><div className="small muted">{b.customer.name}</div></td>
                   <td className="hide-mobile">{b.event.room}</td>
