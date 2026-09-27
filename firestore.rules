@@ -105,34 +105,51 @@ service cloud.firestore {
         && str(d.salesUid, 128);
     }
 
+    // Sales can see and cross-check every BEO (team schedule). The creator (salesUid/salesName =
+    // ผู้รับงาน) never changes; the last editor is kept in editedByUid/editedByName and in revisions.
     match /beos/{id} {
-      allow read: if isAdmin() || (isActive() && isOwner(resource.data));
+      allow read: if isActive();
 
       // Sales create their own drafts, or submit straight away ("pending" = รอการยืนยัน).
       // Only Admin can confirm.
       allow create: if isActive()
         && validBeo(request.resource.data)
+        && !('deleteRequest' in request.resource.data && request.resource.data.deleteRequest != null)
         && (isAdmin()
             || (isOwner(request.resource.data) && request.resource.data.status in ['draft', 'pending']));
 
-      // Sales may edit their own BEO while it is a draft or waiting for confirmation.
-      // After Admin confirms, only Admin edits.
-      allow update: if isActive()
-        && validBeo(request.resource.data)
-        && (isAdmin()
-            || (isOwner(resource.data)
-                && resource.data.status in ['draft', 'pending']
-                && isOwner(request.resource.data)
-                && request.resource.data.status in ['draft', 'pending']));
+      allow update: if isActive() && (
+        // Admin: anything valid
+        (isAdmin() && validBeo(request.resource.data))
+        // Sales: edit any colleague's BEO that is a draft / pending / confirmed.
+        // The result must be draft (only if it was a draft) or pending — editing a confirmed
+        // BEO sends it back to Admin for approval. Owner and delete request cannot be touched here.
+        || (validBeo(request.resource.data)
+            && request.resource.data.salesUid == resource.data.salesUid
+            && request.resource.data.editedByUid == request.auth.uid
+            && request.resource.data.get('deleteRequest', null) == resource.data.get('deleteRequest', null)
+            && resource.data.status in ['draft', 'pending', 'confirmed']
+            && (request.resource.data.status == 'pending'
+                || (request.resource.data.status == 'draft' && resource.data.status == 'draft')))
+        // Sales: ask Admin to delete (or withdraw the request for) their own submitted BEO
+        || (isOwner(resource.data)
+            && resource.data.status in ['confirmed', 'completed', 'cancelled', 'pending']
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleteRequest', 'updatedAt'])
+            && (request.resource.data.deleteRequest == null
+                || request.resource.data.deleteRequest.byUid == request.auth.uid))
+      );
 
-      allow delete: if isAdmin();
+      // Admin deletes anything. Sales delete only their own draft, or their own pending BEO
+      // that has never been confirmed. Anything that was confirmed goes through deleteRequest.
+      allow delete: if isAdmin()
+        || (isActive() && isOwner(resource.data)
+            && (resource.data.status == 'draft'
+                || (resource.data.status == 'pending' && !('confirmedAt' in resource.data))));
 
-      // revision history: append-only audit trail
+      // revision history: append-only audit trail, readable by all staff
       match /revisions/{rev} {
-        allow read: if isAdmin()
-          || (isActive() && get(/databases/$(database)/documents/beos/$(id)).data.salesUid == request.auth.uid);
-        allow create: if isAdmin()
-          || (isActive() && getAfter(/databases/$(database)/documents/beos/$(id)).data.salesUid == request.auth.uid);
+        allow read: if isActive();
+        allow create: if isActive() && request.resource.data.savedBy == request.auth.uid;
         allow update, delete: if false;
       }
     }
@@ -140,11 +157,14 @@ service cloud.firestore {
     // ---------- room bookings (public to staff, no customer data) ----------
     match /bookings/{beoId} {
       allow read: if isActive();
+      // written together with the BEO (any staff member may re-submit a colleague's BEO)
       allow create, update: if isAdmin()
         || (isActive()
-            && request.resource.data.salesUid == request.auth.uid
-            && getAfter(/databases/$(database)/documents/beos/$(beoId)).data.salesUid == request.auth.uid);
-      allow delete: if isAdmin();
+            && getAfter(/databases/$(database)/documents/beos/$(beoId)).data.salesUid == request.resource.data.salesUid
+            && getAfter(/databases/$(database)/documents/beos/$(beoId)).data.editedByUid == request.auth.uid);
+      // deleted together with the BEO; a draft has no booking (resource == null)
+      allow delete: if isAdmin()
+        || (isActive() && (resource == null || resource.data.salesUid == request.auth.uid));
     }
 
     // everything else is closed

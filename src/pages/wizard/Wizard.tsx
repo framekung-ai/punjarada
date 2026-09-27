@@ -6,7 +6,8 @@ import { useReadyCatalog } from '../../lib/catalog'
 import { priceBeo } from '../../lib/pricing'
 import { submitBeo, createBeo, findCustomer, getBeo, updateBeo } from '../../lib/db'
 import { money } from '../../lib/thai'
-import { errorText, Spinner, useToast } from '../../components/ui'
+import { errorText, Spinner, useConfirm, useToast } from '../../components/ui'
+import { canEditBeo, editWarning } from '../editGuard'
 import { copyAsNew, emptyBeo, STEPS, validateStep, type StepErrors } from './model'
 import { StepCustomer, StepEvent, StepSeating, StepType } from './StepBasics'
 import { StepFood } from './StepFood'
@@ -17,6 +18,7 @@ export function Wizard() {
   const location = useLocation()
   const navigate = useNavigate()
   const toast = useToast()
+  const confirmModal = useConfirm()
   const { user } = useAuth()
   const catalog = useReadyCatalog()
   const isAdmin = user?.role === 'admin'
@@ -34,10 +36,16 @@ export function Wizard() {
   // load / init
   useEffect(() => {
     if (!user) return
+    let alive = true
     if (id) {
-      getBeo(id).then((b) => {
+      getBeo(id).then(async (b) => {
+        if (!alive) return
         if (!b) { setLoadErr('ไม่พบเอกสาร'); return }
-        if (!isAdmin && b.status !== 'draft' && b.status !== 'pending') { setLoadErr('เอกสารที่ยืนยันแล้วแก้ไขได้เฉพาะ Admin'); return }
+        if (!canEditBeo(b, user)) { setLoadErr(b.status === 'cancelled' ? 'งานที่ยกเลิกแล้วแก้ไขได้เฉพาะ Admin' : 'งานที่จัดแล้วแก้ไขได้เฉพาะ Admin'); return }
+        // opened straight from a link (not via the "แก้ไข" button, which already asked) → ask here
+        const acked = (location.state as { editAck?: boolean } | null)?.editAck
+        const warn = acked ? null : editWarning(b, user)
+        if (warn && !(await confirmModal(warn))) { navigate(`/beo/${id}`, { replace: true }); return }
         setBeoRaw(b)
         setStep(b.lines.length ? 4 : 1)
         findCustomer(b.customer.phone).then((c) => setRegular(!!c && c.beoCount > 0)).catch(() => {})
@@ -47,7 +55,9 @@ export function Wizard() {
       setBeoRaw(copy ? copyAsNew(copy, user) : emptyBeo(user))
       if (copy) setStep(2)
     }
-  }, [id, user, isAdmin, location.state])
+    return () => { alive = false }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, user, isAdmin])
 
   const setBeo = useCallback((fn: (b: Beo) => Beo) => {
     setBeoRaw((b) => (b ? fn(b) : b))
@@ -65,14 +75,17 @@ export function Wizard() {
   if (!beo || !pricedBeo || !priced || !user) return <Spinner />
 
   const isDraft = beo.status === 'draft'
+  const reapproval = !isAdmin && beo.status === 'confirmed'
+  const othersWork = !!beo.id && beo.salesUid !== user.uid
+  const stamped = (b: Beo): Beo => ({ ...b, editedByUid: user.uid, editedByName: user.displayName })
 
   const saveDraft = async (quiet = false) => {
     if (!isDraft || !pricedBeo.customer.name.trim()) return beoId
     setSaving(true)
     try {
-      if (beoId) await updateBeo(beoId, pricedBeo)
+      if (beoId) await updateBeo(beoId, stamped(pricedBeo))
       else {
-        const newId = await createBeo(pricedBeo)
+        const newId = await createBeo(stamped(pricedBeo))
         setBeoId(newId)
         setBeoRaw((b) => (b ? { ...b, id: newId } : b))
         window.history.replaceState(null, '', isAdmin ? `/admin/beo/${newId}/edit` : `/sales/beo/${newId}/edit`)
@@ -112,8 +125,8 @@ export function Wizard() {
     }
     setSaving(true)
     try {
-      const res = await submitBeo(beoId, pricedBeo, { uid: user.uid, name: user.displayName, isAdmin })
-      toast(res.status === 'pending' ? `ส่งให้ Admin ยืนยันแล้ว — เลขที่ ${res.docNo}` : `บันทึกแล้ว เลขที่ ${res.docNo}`)
+      const res = await submitBeo(beoId, stamped(pricedBeo), { uid: user.uid, name: user.displayName, isAdmin })
+      toast(res.status === 'pending' ? (reapproval ? `ส่งให้ Admin อนุมัติอีกครั้งแล้ว — ${res.docNo}` : `ส่งให้ Admin ยืนยันแล้ว — เลขที่ ${res.docNo}`) : `บันทึกแล้ว เลขที่ ${res.docNo}`)
       navigate(`/beo/${res.id}`, { replace: true })
     } catch (e) {
       toast(`ยืนยันไม่สำเร็จ: ${errorText(e)}`)
@@ -124,12 +137,13 @@ export function Wizard() {
 
   const submitLabel = isAdmin
     ? (beo.status === 'draft' || beo.status === 'pending' ? 'ยืนยันงาน' : 'บันทึกการแก้ไข')
+    : reapproval ? 'ส่งให้ Admin อนุมัติอีกครั้ง'
     : (beo.status === 'pending' ? 'บันทึกและส่งใหม่' : 'ส่งให้ Admin ยืนยัน')
   const stepProps = { beo, setBeo, catalog, errors }
   const lineCount = priced.lines.filter((l) => l.kind !== 'foc').length
 
   return (
-    <div>
+    <div className="wiz-page">
       <div className="row between">
         <div>
           <div className="small muted">
@@ -147,6 +161,14 @@ export function Wizard() {
         ))}
       </div>
 
+      {(reapproval || othersWork) && (
+        <div className="notice gold" style={{ marginBottom: 12 }}>
+          <span>
+            {othersWork && <>กำลังแก้ไขงานของ <strong>{beo.salesName}</strong>{reapproval ? ' · ' : ''}</>}
+            {reapproval && <>งานนี้ยืนยันแล้ว — เมื่อส่ง สถานะจะกลับเป็น “รอการยืนยัน” จนกว่า Admin จะอนุมัติ</>}
+          </span>
+        </div>
+      )}
       {step === 0 && <StepType {...stepProps} />}
       {step === 1 && <StepCustomer {...stepProps} onRegular={setRegular} />}
       {step === 2 && <StepEvent {...stepProps} />}

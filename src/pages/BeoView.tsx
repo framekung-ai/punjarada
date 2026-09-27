@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { History, Pencil, Trash2 } from 'lucide-react'
 import type { Beo } from '../lib/types'
-import { deleteBeo, getBeo, listRevisions, setBeoStatus } from '../lib/db'
+import { deleteBeo, getBeo, listRevisions, requestDeleteBeo, setBeoStatus, type Revision } from '../lib/db'
 import { useAuth } from '../lib/auth'
 import { useReadyCatalog } from '../lib/catalog'
 import { BeoDocument } from '../beo/BeoDocument'
@@ -9,6 +10,25 @@ import { ScaledDoc } from '../beo/ScaledDoc'
 import { exportJpg, exportPdf, sharePdf } from '../beo/export'
 import { errorText, Sheet, Spinner, StatusBadge, useToast, useConfirm } from '../components/ui'
 import { money, thaiDate } from '../lib/thai'
+import { canEditBeo, editWarning } from './editGuard'
+
+const ACTION_LABEL: Record<string, string> = {
+  submit: 'ส่งให้ Admin ยืนยัน', edit: 'แก้ไข', confirm: 'ยืนยันงาน', status: 'เปลี่ยนสถานะ',
+}
+const STATUS_TEXT: Record<string, string> = {
+  draft: 'แบบร่าง', pending: 'รอการยืนยัน', confirmed: 'ยืนยันแล้ว', completed: 'จัดงานแล้ว', cancelled: 'ยกเลิก', new: 'ใหม่',
+}
+
+function revText(r: Revision) {
+  if (r.action === 'status') return `${STATUS_TEXT[r.prevStatus ?? ''] ?? ''} → ${STATUS_TEXT[r.status] ?? r.status}`
+  if (r.action) return ACTION_LABEL[r.action] ?? r.action
+  return 'บันทึก' // revisions saved before the history labels existed
+}
+
+/** Sales may delete their own draft, or their own pending BEO that was never confirmed. */
+function salesCanDeleteDirectly(b: Beo) {
+  return b.status === 'draft' || (b.status === 'pending' && !b.confirmedAt)
+}
 
 export function BeoView() {
   const { id } = useParams()
@@ -20,7 +40,7 @@ export function BeoView() {
   const [beo, setBeo] = useState<Beo | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [revs, setRevs] = useState<Awaited<ReturnType<typeof listRevisions>> | null>(null)
+  const [revs, setRevs] = useState<Revision[] | null>(null)
   const exportRef = useRef<HTMLDivElement>(null)
   const isAdmin = user?.role === 'admin'
 
@@ -30,26 +50,67 @@ export function BeoView() {
   }, [id])
 
   if (err) return <div className="notice warn">{err}</div>
-  if (!beo || !id) return <Spinner />
+  if (!beo || !id || !user) return <Spinner />
 
+  const actor = { uid: user.uid, name: user.displayName }
+  const isOwner = beo.salesUid === user.uid
   const run = async (label: string, fn: () => Promise<unknown>) => {
     if (!exportRef.current) return
     setBusy(label)
     try { await fn() } catch (e) { toast(`${label}ไม่สำเร็จ: ${errorText(e)}`) } finally { setBusy(null) }
   }
-  const canEdit = isAdmin || ((beo.status === 'draft' || beo.status === 'pending') && beo.salesUid === user?.uid)
+  const canEdit = canEditBeo(beo, user)
   const editPath = isAdmin ? `/admin/beo/${id}/edit` : `/sales/beo/${id}/edit`
+  const home = isAdmin ? '/admin/beos' : '/sales'
+
+  const startEdit = async () => {
+    const warn = editWarning(beo, user)
+    if (warn && !(await confirm(warn))) return
+    navigate(editPath, { state: { editAck: true } })
+  }
+
   const changeStatus = async (s: Beo['status']) => {
     if (s === 'cancelled' && !(await confirm({ title: 'ยกเลิกงานนี้?', message: `${beo.event.name} · ${beo.docNo ?? ''}\nห้องจะกลับมาว่างในระบบ กด “คืนสถานะยืนยัน” ได้ภายหลัง`, confirmText: 'ยกเลิกงาน', cancelText: 'ไม่ยกเลิก', danger: true }))) return
-    try { await setBeoStatus(id, s); setBeo({ ...beo, status: s }); toast('อัปเดตสถานะแล้ว') } catch (e) { toast(errorText(e)) }
+    try { await setBeoStatus(id, s, actor, beo); setBeo({ ...beo, status: s }); toast('อัปเดตสถานะแล้ว') } catch (e) { toast(errorText(e)) }
   }
+
+  const removeNow = async () => {
+    const ok = await confirm({
+      title: 'ลบเอกสารนี้ถาวร?',
+      message: `${beo.docNo ?? 'แบบร่าง'} · ${beo.event.name || '(ยังไม่มีชื่องาน)'}\nกู้คืนไม่ได้${isAdmin ? ' — ถ้าลูกค้ายกเลิก แนะนำใช้ “ยกเลิกงาน” แทน' : ''}`,
+      confirmText: 'ลบถาวร', danger: true,
+    })
+    if (!ok) return
+    try { await deleteBeo(id); toast('ลบแล้ว'); navigate(home, { replace: true }) } catch (e) { toast(errorText(e)) }
+  }
+
+  const askDelete = async () => {
+    const ok = await confirm({
+      title: 'ส่งคำขอลบให้ Admin?',
+      message: `${beo.docNo} · ${beo.event.name}\nงานนี้ Admin ยืนยันแล้ว จึงลบเองไม่ได้ — ระบบจะส่งคำขอให้ Admin พิจารณาลบ\nระหว่างรอ เอกสารยังอยู่ในระบบตามปกติ และถอนคำขอได้`,
+      confirmText: 'ส่งคำขอลบ', danger: true,
+    })
+    if (!ok) return
+    try { await requestDeleteBeo(id, actor); setBeo({ ...beo, deleteRequest: { byUid: actor.uid, byName: actor.name, at: Date.now() } }); toast('ส่งคำขอลบให้ Admin แล้ว') } catch (e) { toast(errorText(e)) }
+  }
+
+  const clearRequest = async (msg: string) => {
+    try { await requestDeleteBeo(id, null); setBeo({ ...beo, deleteRequest: null }); toast(msg) } catch (e) { toast(errorText(e)) }
+  }
+
+  const openHistory = () => void listRevisions(id).then(setRevs).catch((e) => toast(errorText(e)))
+  const edited = beo.editedByName && beo.editedByUid !== beo.salesUid
 
   return (
     <div className="stack">
       <div className="page-head">
         <div>
-          <div className="row"><h1>{beo.docNo ?? 'แบบร่าง'}</h1><StatusBadge status={beo.status} />{beo.revision > 0 && <span className="badge gray">Rev.{beo.revision}</span>}</div>
+          <div className="row wrap"><h1>{beo.docNo ?? 'แบบร่าง'}</h1><StatusBadge status={beo.status} />{beo.revision > 0 && <span className="badge gray">Rev.{beo.revision}</span>}{beo.deleteRequest && <span className="badge req-del">ขอลบ</span>}</div>
           <div className="muted small">{beo.event.name} · {thaiDate(beo.event.date)} · {money(beo.totals.grandTotal)} บาท</div>
+          <div className="edited-by">
+            ผู้รับงาน <strong>{beo.salesName}</strong>
+            {edited && <> · แก้ไขล่าสุดโดย <strong>{beo.editedByName}</strong></>}
+          </div>
         </div>
       </div>
 
@@ -57,9 +118,26 @@ export function BeoView() {
         <button className="btn primary" disabled={!!busy} onClick={() => void run('ส่งออก PDF', () => exportPdf(exportRef.current!, beo))}>{busy === 'ส่งออก PDF' ? 'กำลังสร้าง…' : 'ดาวน์โหลด PDF'}</button>
         <button className="btn" disabled={!!busy} onClick={() => void run('ส่งออก JPG', () => exportJpg(exportRef.current!, beo))}>{busy === 'ส่งออก JPG' ? 'กำลังสร้าง…' : 'ดาวน์โหลด JPG'}</button>
         <button className="btn hide-desktop" disabled={!!busy} onClick={() => void run('แชร์', () => sharePdf(exportRef.current!, beo))}>แชร์</button>
-        {canEdit && <Link className="btn" to={editPath}>แก้ไข</Link>}
+        {canEdit && <button className="btn" onClick={() => void startEdit()}><Pencil size={16} aria-hidden /> แก้ไข</button>}
         <button className="btn" onClick={() => navigate('/sales/new', { state: { copyFrom: beo } })}>คัดลอกเป็นงานใหม่</button>
+        <button className="btn" onClick={openHistory}><History size={16} aria-hidden /> ประวัติการแก้ไข</button>
+        {!isAdmin && isOwner && (salesCanDeleteDirectly(beo)
+          ? <button className="btn danger" style={{ marginLeft: 'auto' }} onClick={() => void removeNow()}><Trash2 size={16} aria-hidden /> ลบ</button>
+          : !beo.deleteRequest && <button className="btn danger" style={{ marginLeft: 'auto' }} onClick={() => void askDelete()}><Trash2 size={16} aria-hidden /> ขอให้ Admin ลบ</button>)}
       </div>
+
+      {beo.deleteRequest && (isAdmin ? (
+        <div className="notice warn">
+          <span><strong>{beo.deleteRequest.byName}</strong> ขอให้ลบเอกสารนี้{beo.deleteRequest.reason ? ` — ${beo.deleteRequest.reason}` : ''}</span>
+          <button className="btn small" onClick={() => void clearRequest('ปฏิเสธคำขอลบแล้ว')}>ปฏิเสธคำขอ</button>
+          <button className="btn small danger-solid" style={{ marginLeft: 0 }} onClick={() => void removeNow()}>อนุมัติ ลบเอกสาร</button>
+        </div>
+      ) : (
+        <div className="notice warn">
+          <span>ส่งคำขอลบแล้ว{beo.deleteRequest.byUid !== user.uid ? ` (โดย ${beo.deleteRequest.byName})` : ''} — รอ Admin พิจารณา</span>
+          {beo.deleteRequest.byUid === user.uid && <button className="btn small" onClick={() => void clearRequest('ถอนคำขอลบแล้ว')}>ถอนคำขอ</button>}
+        </div>
+      ))}
 
       {beo.status === 'pending' && (isAdmin ? (
         <div className="notice gold">
@@ -67,17 +145,16 @@ export function BeoView() {
           <button className="btn primary" onClick={() => void changeStatus('confirmed')}>ยืนยันงาน</button>
         </div>
       ) : <div className="notice gold">ส่งแล้ว รอ Admin ยืนยัน — ยังแก้ไขได้จนกว่า Admin จะยืนยัน</div>)}
+      {!isAdmin && beo.status === 'confirmed' && (
+        <div className="notice info">งานนี้ยืนยันแล้ว — ถ้ากด “แก้ไข” เอกสารจะกลับเป็น “รอการยืนยัน” และต้องให้ Admin อนุมัติอีกครั้ง</div>
+      )}
       {isAdmin && (
         <div className="card flat row wrap">
           <span className="small muted">Admin:</span>
           {beo.status === 'confirmed' && <button className="btn small" onClick={() => void changeStatus('completed')}>จัดงานแล้ว</button>}
           {beo.status === 'cancelled' && <button className="btn small" onClick={() => void changeStatus('confirmed')}>คืนสถานะยืนยัน</button>}
           {beo.status !== 'cancelled' && beo.status !== 'draft' && <button className="btn small danger" onClick={() => void changeStatus('cancelled')}>ยกเลิกงาน</button>}
-          <button className="btn small" onClick={() => void listRevisions(id).then(setRevs).catch((e) => toast(errorText(e)))}>ประวัติการแก้ไข</button>
-          <button className="btn small danger" style={{ marginLeft: 'auto' }} onClick={async () => {
-            if (!(await confirm({ title: 'ลบเอกสารนี้ถาวร?', message: `${beo.docNo ?? 'แบบร่าง'} · ${beo.event.name}\nกู้คืนไม่ได้ — ถ้าลูกค้ายกเลิก แนะนำใช้ “ยกเลิกงาน” แทน`, confirmText: 'ลบถาวร', danger: true }))) return
-            void deleteBeo(id).then(() => { toast('ลบแล้ว'); navigate('/admin/beos') }).catch((e) => toast(errorText(e)))
-          }}>ลบ</button>
+          <button className="btn small danger" style={{ marginLeft: 'auto' }} onClick={() => void removeNow()}>ลบ</button>
         </div>
       )}
 
@@ -89,13 +166,17 @@ export function BeoView() {
       </div>
 
       <Sheet open={!!revs} onClose={() => setRevs(null)} title="ประวัติการแก้ไข">
-        {revs?.length === 0 && <div className="muted">ยังไม่มีประวัติ</div>}
-        {revs?.map((r) => (
-          <div key={r.revision} className="row between card flat">
+        {revs?.length === 0 && <div className="muted">ยังไม่มีประวัติ — ประวัติจะเริ่มบันทึกเมื่อส่งเอกสาร</div>}
+        {revs?.map((r, i) => (
+          <div key={i} className="card flat rev-item">
             <div>
-              <strong>Rev.{r.revision}</strong> <span className="small muted">{r.savedAt?.toDate().toLocaleString('th-TH')} · {r.savedByName}</span>
+              <span className="who">{r.savedByName || 'ไม่ทราบชื่อ'}</span>
+              {r.savedBy && r.savedBy === beo.salesUid && <span className="badge gray" style={{ marginLeft: 6 }}>ผู้รับงาน</span>}
+              {r.savedBy && r.savedBy === user.uid && <span className="badge" style={{ marginLeft: 6 }}>คุณ</span>}
             </div>
-            <span className="num">{money(r.totals.grandTotal)}</span>
+            <span className="num">{r.totals ? money(r.totals.grandTotal) : ''}</span>
+            <div className="small">{revText(r)} · Rev.{r.revision ?? 0}</div>
+            <span className="small muted">{r.savedAt?.toDate().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</span>
           </div>
         ))}
       </Sheet>

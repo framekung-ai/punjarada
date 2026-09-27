@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import {
-  BookOpen, ClipboardList, Contact, FilePlus2, FileText, Gift, Home, LayoutDashboard, LayoutList, LogOut,
+  BookOpen, CalendarDays, ClipboardList, Contact, FilePlus2, FileText, Gift, LayoutDashboard, LayoutList, LogOut,
   Settings, Tags, UploadCloud, UserCog, UtensilsCrossed, Wrench, type LucideIcon,
 } from 'lucide-react'
 import { useAuth } from '../lib/auth'
@@ -38,9 +38,9 @@ export const ADMIN_NAV: { group: string; items: NavItem[] }[] = [
 ]
 
 const SALES_NAV: NavItem[] = [
-  ['/sales', 'หน้าแรก', Home],
+  ['/sales', 'เอกสารของฉัน', ClipboardList],
   ['/sales/new', 'สร้าง BEO', FilePlus2],
-  ['/sales/docs', 'เอกสารของฉัน', ClipboardList],
+  ['/sales/all', 'เอกสารทั้งหมด', CalendarDays],
 ]
 
 export function AppShell() {

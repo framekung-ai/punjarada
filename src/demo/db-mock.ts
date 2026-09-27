@@ -34,6 +34,12 @@ let store = load()
 const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(store)) } catch { /* ignore */ } }
 const delay = <T,>(v: T) => new Promise<T>((r) => setTimeout(() => r(structuredClone(v)), 60))
 const now = () => ({ toDate: () => new Date() })
+/** strip timestamp wrappers ({toDate}) so the object can be stored / cloned */
+const plain = <T,>(v: T): T => {
+  const { createdAt: _c, updatedAt: _u, confirmedAt: _cf, ...rest } = v as T & { createdAt?: unknown; updatedAt?: unknown; confirmedAt?: unknown }
+  void _c; void _u; void _cf
+  return JSON.parse(JSON.stringify(rest)) as T
+}
 let n = 0
 const rid = () => `d${Date.now().toString(36)}${(n++).toString(36)}`
 
@@ -72,11 +78,11 @@ export async function findCustomer(phone: string) { return delay(store.customers
 
 export async function createBeo(b: Beo) {
   const id = rid()
-  store.beos[id] = { ...structuredClone(b), id, createdAt: Date.now(), updatedAt: Date.now() }
+  store.beos[id] = { ...plain(b), id, createdAt: Date.now(), updatedAt: Date.now() }
   persist()
   return id
 }
-export async function updateBeo(id: string, b: Beo) { store.beos[id] = { ...store.beos[id], ...structuredClone(b), id, updatedAt: Date.now() }; persist() }
+export async function updateBeo(id: string, b: Beo) { store.beos[id] = { ...store.beos[id], ...plain(b), deleteRequest: store.beos[id]?.deleteRequest ?? null, id, updatedAt: Date.now() }; persist() }
 export async function submitBeo(id: string | undefined, b: Beo, actor: { uid: string; name: string; isAdmin: boolean }) {
   const bid = id ?? rid()
   const cur = store.beos[bid]
@@ -92,8 +98,9 @@ export async function submitBeo(id: string | undefined, b: Beo, actor: { uid: st
   }
   const status: Beo['status'] = actor.isAdmin ? (b.status === 'draft' || b.status === 'pending' ? 'confirmed' : b.status) : 'pending'
   const revision = wasConfirmed ? (b.revision ?? 0) + 1 : (b.revision ?? 0)
-  const saved = { ...structuredClone(b), id: bid, docNo, revision, status, confirmedAt: status === 'confirmed' ? (cur?.confirmedAt ?? Date.now()) : cur?.confirmedAt, updatedAt: Date.now() } as Beo & { _rev?: Beo[] }
-  saved._rev = [...(cur?._rev ?? []), { ...structuredClone(b), docNo, revision, status, savedByName: actor.name, savedAt: Date.now() } as unknown as Beo]
+  const saved = { ...plain(b), deleteRequest: cur?.deleteRequest ?? null, editedByUid: actor.uid, editedByName: actor.name, id: bid, docNo, revision, status, confirmedAt: status === 'confirmed' ? (cur?.confirmedAt ?? Date.now()) : cur?.confirmedAt, updatedAt: Date.now() } as Beo & { _rev?: Beo[] }
+  const action = actor.isAdmin ? (status === 'confirmed' && cs !== 'confirmed' ? 'confirm' : 'edit') : (cs === 'pending' ? 'edit' : 'submit')
+  saved._rev = [...(cur?._rev ?? []), { ...plain(b), docNo, revision, status, action, prevStatus: cs ?? 'new', savedBy: actor.uid, savedByName: actor.name, savedAt: Date.now() } as unknown as Beo]
   store.beos[bid] = saved
   const k = phoneKey(b.customer.phone)
   if (k.length >= 9 && !wasSubmitted) store.customers[k] = { ...b.customer, phone: k, beoCount: (store.customers[k]?.beoCount ?? 0) + 1, updatedAt: Date.now() as never }
@@ -110,10 +117,24 @@ function out(b: Beo & { _rev?: Beo[] }): Beo {
   const { _rev, ...rest } = b
   void _rev
   const toTs = (v: unknown) => (typeof v === 'number' ? { toDate: () => new Date(v) } : v)
-  return { ...rest, confirmedAt: toTs(rest.confirmedAt), updatedAt: toTs(rest.updatedAt) }
+  return { ...rest, confirmedAt: toTs(rest.confirmedAt), updatedAt: toTs(rest.updatedAt), createdAt: toTs(rest.createdAt) }
 }
 export async function getBeo(id: string) { const b = store.beos[id]; return b ? out(structuredClone(b)) : null }
-export async function setBeoStatus(id: string, status: Beo['status']) { store.beos[id].status = status; if (status === 'confirmed') store.beos[id].confirmedAt = Date.now(); persist() }
+export interface Actor { uid: string; name: string }
+export async function setBeoStatus(id: string, status: Beo['status'], actor?: Actor, beo?: Beo) {
+  const cur = store.beos[id]
+  if (actor && beo) cur._rev = [...(cur._rev ?? []), { revision: beo.revision ?? 0, status, prevStatus: beo.status, action: 'status', docNo: beo.docNo, totals: beo.totals, savedBy: actor.uid, savedByName: actor.name, savedAt: Date.now() } as unknown as Beo]
+  cur.status = status
+  if (status === 'confirmed') cur.confirmedAt = Date.now()
+  persist()
+}
+export async function requestDeleteBeo(id: string, by: Actor | null, reason = '') {
+  store.beos[id].deleteRequest = by ? { byUid: by.uid, byName: by.name, at: Date.now(), reason } : null
+  persist()
+}
+export async function listDeleteRequests() {
+  return Object.values(structuredClone(store.beos)).filter((b) => !!b.deleteRequest).map(out)
+}
 export async function deleteBeo(id: string) { delete store.beos[id]; persist() }
 export async function listMyBeos(uid: string) {
   return Object.values(structuredClone(store.beos)).filter((b) => b.salesUid === uid).map(out).sort((a, b) => b.event.date.localeCompare(a.event.date))
@@ -126,8 +147,18 @@ export async function bookingsOnDate(date: string): Promise<Booking[]> {
   return Object.values(store.beos).filter((b) => b.event.date === date && b.status !== 'draft' && b.status !== 'cancelled')
     .map((b) => ({ beoId: b.id!, date, room: b.event.room, start: b.event.start, end: b.event.end, eventName: b.event.name, salesName: b.salesName, status: b.status }))
 }
-export async function listRevisions(id: string) {
-  return (store.beos[id]?._rev ?? []).map((r) => ({ ...r, savedAt: now() })).reverse() as (Beo & { savedByName?: string; savedAt?: { toDate(): Date } })[]
+export type Revision = Beo & {
+  savedBy?: string
+  savedByName?: string
+  savedAt?: { toDate(): Date }
+  action?: 'submit' | 'edit' | 'confirm' | 'status'
+  prevStatus?: Beo['status'] | 'new'
+}
+export async function listRevisions(id: string): Promise<Revision[]> {
+  return (store.beos[id]?._rev ?? []).map((r) => {
+    const at = (r as unknown as { savedAt?: number }).savedAt
+    return { ...r, savedAt: typeof at === 'number' ? { toDate: () => new Date(at) } : now() }
+  }).reverse() as Revision[]
 }
 export async function listPendingBeos() {
   return Object.values(structuredClone(store.beos)).filter((b) => b.status === 'pending').map(out).sort((a, b) => a.event.date.localeCompare(b.event.date))

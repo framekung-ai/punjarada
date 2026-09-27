@@ -3,8 +3,9 @@ import { Route, Routes, useNavigate } from 'react-router-dom'
 import type { Beo } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
 import { Trash2, X } from 'lucide-react'
-import { deleteBeos, listBeosBetween, listPendingBeos } from '../../lib/db'
-import { money, num, THAI_MONTHS, thaiDate, timeRange, todayIso } from '../../lib/thai'
+import { deleteBeos, listBeosBetween, listDeleteRequests, listPendingBeos } from '../../lib/db'
+import { money, num, thaiDate, timeRange, todayIso } from '../../lib/thai'
+import { MonthPicker, monthRange } from '../../components/MonthPicker'
 import { Empty, errorText, Spinner, StatusBadge, useConfirm, useToast } from '../../components/ui'
 import { CategoriesAdmin, MenuAdmin, ServicesAdmin } from './CatalogAdmin'
 import { SetsAdmin } from './SetsAdmin'
@@ -38,26 +39,6 @@ export default function AdminPages() {
   )
 }
 
-function monthRange(ym: string): [string, string] {
-  const [y, m] = ym.split('-').map(Number)
-  const last = new Date(y, m, 0).getDate()
-  return [`${ym}-01`, `${ym}-${String(last).padStart(2, '0')}`]
-}
-
-function MonthPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [y, m] = value.split('-').map(Number)
-  const move = (d: number) => {
-    const dt = new Date(y, m - 1 + d, 1)
-    onChange(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`)
-  }
-  return (
-    <div className="row">
-      <button className="icon-btn" onClick={() => move(-1)} aria-label="เดือนก่อน">‹</button>
-      <strong style={{ minWidth: 130, textAlign: 'center' }}>{THAI_MONTHS[m - 1]} {y + 543}</strong>
-      <button className="icon-btn" onClick={() => move(1)} aria-label="เดือนถัดไป">›</button>
-    </div>
-  )
-}
 
 function useMonthBeos(ym: string) {
   const [beos, setBeos] = useState<Beo[] | null>(null)
@@ -75,7 +56,11 @@ function Dashboard() {
   const [ym, setYm] = useState(todayIso().slice(0, 7))
   const { beos, err } = useMonthBeos(ym)
   const [pending, setPending] = useState<Beo[] | null>(null)
-  useEffect(() => { listPendingBeos().then(setPending).catch(() => setPending([])) }, [])
+  const [delReq, setDelReq] = useState<Beo[] | null>(null)
+  useEffect(() => {
+    listPendingBeos().then(setPending).catch(() => setPending([]))
+    listDeleteRequests().then(setDelReq).catch(() => setDelReq([]))
+  }, [])
   const stats = useMemo(() => {
     const list = beos ?? []
     const live = list.filter((b) => b.status === 'confirmed' || b.status === 'completed')
@@ -107,6 +92,18 @@ function Dashboard() {
                   <div><strong>{thaiDate(b.event.date, { short: true })}</strong> <span className="small muted">{b.docNo}</span>
                     <div className="small">{b.event.name} · {b.customer.name} · โดย {b.salesName}</div></div>
                   <span className="btn small">ตรวจ / ยืนยัน</span>
+                </div>
+              ))}
+            </section>
+          )}
+          {delReq && delReq.length > 0 && (
+            <section className="card stack" style={{ borderLeft: '4px solid var(--danger)' }}>
+              <h2>คำขอลบจาก Sales ({delReq.length})</h2>
+              {delReq.map((b) => (
+                <div key={b.id} className="row between" style={{ cursor: 'pointer' }} onClick={() => navigate(`/beo/${b.id}`)}>
+                  <div><strong>{b.docNo}</strong> <span className="small muted">{thaiDate(b.event.date, { short: true })}</span>
+                    <div className="small">{b.event.name} · ขอโดย {b.deleteRequest?.byName}</div></div>
+                  <span className="btn small">พิจารณา</span>
                 </div>
               ))}
             </section>
@@ -251,7 +248,7 @@ function BeoList() {
                   <td className="hide-mobile">{b.event.room}</td>
                   <td className="hide-mobile">{b.salesName}</td>
                   <td className="num">{money(b.totals.grandTotal)}</td>
-                  <td><StatusBadge status={b.status} /></td>
+                  <td><StatusBadge status={b.status} />{b.deleteRequest && <div><span className="badge req-del" style={{ marginTop: 4 }}>ขอลบ</span></div>}</td>
                 </tr>
               ))}
             </tbody>

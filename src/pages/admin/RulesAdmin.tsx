@@ -217,15 +217,32 @@ export function SettingsAdmin() {
         </div>
       </section>
       <section className="card stack">
-        <h2>ห้องจัดงาน</h2>
-        {s.rooms.map((r, i) => (
-          <div key={i} className="row">
-            <input className="input grow" value={r.name} onChange={(e) => set('rooms', s.rooms.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
-            <input className="input" style={{ width: 110 }} placeholder="ชั้น" value={r.floor} onChange={(e) => set('rooms', s.rooms.map((x, k) => (k === i ? { ...x, floor: e.target.value } : x)))} />
-            <button className="icon-btn" onClick={() => set('rooms', s.rooms.filter((_, k) => k !== i))}>×</button>
-          </div>
-        ))}
-        <button className="btn small" onClick={() => set('rooms', [...s.rooms, { name: '', floor: '' }])}>+ เพิ่มห้อง</button>
+        <div className="row between wrap">
+          <h2>ห้องจัดงาน</h2>
+          <span className="small muted">ใช้งาน {s.rooms.filter((r) => r.active !== false).length}/{s.rooms.length} ห้อง</span>
+        </div>
+        <div className="small muted">เลื่อนสวิตช์เพื่อเปิด/ปิดใช้งาน — ห้องที่ปิดจะไม่แสดงตอนสร้าง BEO (เอกสารเดิมที่ใช้ห้องนั้นยังอยู่ครบ) · บันทึกทันทีเมื่อเลื่อน</div>
+        {s.rooms.map((r, i) => {
+          const on = r.active !== false
+          return (
+            <div key={i} className={`row room-row${on ? '' : ' off'}`}>
+              <label className="switch" title={on ? 'ใช้งาน' : 'ไม่ใช้งาน'}>
+                <input type="checkbox" role="switch" checked={on} aria-label={`ใช้งานห้อง ${r.name}`}
+                  onChange={(e) => {
+                    const next = { ...s, rooms: s.rooms.map((x, k) => (k === i ? { ...x, active: e.target.checked } : x)) }
+                    setS(next)
+                    if (r.name.trim()) void save(() => saveSettings(next), `${e.target.checked ? 'เปิด' : 'ปิด'}ใช้งานห้อง ${r.name} แล้ว`)
+                  }} />
+                <span className="track" aria-hidden />
+                <span className="lbl hide-mobile">{on ? 'ใช้งาน' : 'ไม่ใช้งาน'}</span>
+              </label>
+              <input className="input grow" value={r.name} onChange={(e) => set('rooms', s.rooms.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
+              <input className="input" style={{ width: 110 }} placeholder="ชั้น" value={r.floor} onChange={(e) => set('rooms', s.rooms.map((x, k) => (k === i ? { ...x, floor: e.target.value } : x)))} />
+              <button className="icon-btn" aria-label={`ลบห้อง ${r.name}`} onClick={() => set('rooms', s.rooms.filter((_, k) => k !== i))}>×</button>
+            </div>
+          )
+        })}
+        <button className="btn small" onClick={() => set('rooms', [...s.rooms, { name: '', floor: '', active: true }])}>+ เพิ่มห้อง</button>
       </section>
       <section className="card stack">
         <h2>ตัวเลือกในฟอร์ม</h2>

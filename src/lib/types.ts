@@ -135,7 +135,8 @@ export interface Settings {
   address: string
   phone: string
   vatRate: number
-  rooms: { name: string; floor: string }[]
+  /** active === false = ปิดใช้งาน (ไม่แสดงตอนสร้าง BEO) */
+  rooms: { name: string; floor: string; active?: boolean }[]
   eventTypes: string[]
   tableLayouts: string[]
   remarkPresets: string[]
@@ -196,6 +197,13 @@ export interface BeoTotals {
   focValue: number
 }
 
+export interface DeleteRequest {
+  byUid: string
+  byName: string
+  at: unknown
+  reason?: string
+}
+
 export interface Beo {
   id?: string
   docNo: string | null
@@ -231,8 +239,14 @@ export interface Beo {
   terms: string[]
   note: string
   totals: BeoTotals
+  /** ผู้รับงาน (ผู้สร้าง) — ไม่เปลี่ยนเมื่อคนอื่นแก้ไข */
   salesUid: string
   salesName: string
+  /** ผู้แก้ไขล่าสุด */
+  editedByUid?: string
+  editedByName?: string
+  /** Sales ขอให้ Admin ลบ (เอกสารที่ยืนยันแล้ว) */
+  deleteRequest?: DeleteRequest | null
   createdAt?: unknown
   updatedAt?: unknown
   confirmedAt?: unknown

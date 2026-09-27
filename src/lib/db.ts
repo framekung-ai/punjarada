@@ -192,8 +192,9 @@ export async function findCustomer(phone: string): Promise<CustomerRecord | null
 const beosCol = collection(db, 'beos')
 
 function beoPayload(b: Beo) {
-  const { id: _id, createdAt: _c, updatedAt: _u, confirmedAt: _cf, ...rest } = b
-  void _id; void _c; void _u; void _cf
+  // deleteRequest is written only by requestDeleteBeo, so normal saves never clear or forge it
+  const { id: _id, createdAt: _c, updatedAt: _u, confirmedAt: _cf, deleteRequest: _dr, ...rest } = b
+  void _id; void _c; void _u; void _cf; void _dr
   return clean(rest)
 }
 
@@ -240,8 +241,9 @@ export async function submitBeo(
       ? (b.status === 'draft' || b.status === 'pending' ? 'confirmed' : b.status)
       : 'pending'
     const revision = wasConfirmed ? (b.revision ?? 0) + 1 : (b.revision ?? 0)
+    const saved = { ...b, docNo, revision, status, editedByUid: actor.uid, editedByName: actor.name }
     const data = {
-      ...beoPayload({ ...b, docNo, revision, status }),
+      ...beoPayload(saved),
       updatedAt: serverTimestamp(),
       ...(status === 'confirmed' && !wasConfirmed ? { confirmedAt: serverTimestamp() } : {}),
       ...(current?.exists() ? {} : { createdAt: serverTimestamp() }),
@@ -249,7 +251,9 @@ export async function submitBeo(
     if (current?.exists()) tx.update(ref, data)
     else tx.set(ref, data)
     tx.set(doc(db, 'beos', ref.id, 'revisions', `${revision}-${Date.now()}`), {
-      ...beoPayload({ ...b, docNo, revision, status }),
+      ...beoPayload(saved),
+      action: actor.isAdmin ? (status === 'confirmed' && cs !== 'confirmed' ? 'confirm' : 'edit') : (cs === 'pending' ? 'edit' : 'submit'),
+      prevStatus: cs ?? 'new',
       savedAt: serverTimestamp(), savedBy: actor.uid, savedByName: actor.name,
     })
     tx.set(doc(db, 'bookings', ref.id), {
@@ -274,9 +278,17 @@ export async function getBeo(id: string): Promise<Beo | null> {
   return s.exists() ? ({ ...(s.data() as Beo), id: s.id }) : null
 }
 
-/** Admin only (rules). Keeps the public booking in sync. */
-export async function setBeoStatus(id: string, status: Beo['status']) {
+export interface Actor { uid: string; name: string }
+
+/** Admin only (rules). Keeps the public booking in sync and logs the change in the history. */
+export async function setBeoStatus(id: string, status: Beo['status'], actor?: Actor, beo?: Beo) {
   const batch = writeBatch(db)
+  if (actor && beo) {
+    batch.set(doc(db, 'beos', id, 'revisions', `${beo.revision ?? 0}-${Date.now()}`), {
+      revision: beo.revision ?? 0, status, prevStatus: beo.status, action: 'status', docNo: beo.docNo ?? null,
+      totals: beo.totals, savedAt: serverTimestamp(), savedBy: actor.uid, savedByName: actor.name,
+    })
+  }
   batch.update(doc(db, 'beos', id), {
     status, updatedAt: serverTimestamp(), ...(status === 'confirmed' ? { confirmedAt: serverTimestamp() } : {}),
   })
@@ -297,7 +309,24 @@ export async function deleteBeos(ids: string[]) {
   }
 }
 
-/** Admin only. Revisions sub-collection is left as an audit trail. */
+/**
+ * Sales: ask Admin to delete a BEO that is already confirmed (or clear the request with null).
+ * Admin approves with deleteBeo, or rejects with requestDeleteBeo(id, null).
+ */
+export async function requestDeleteBeo(id: string, by: Actor | null, reason = '') {
+  await updateDoc(doc(db, 'beos', id), {
+    deleteRequest: by ? { byUid: by.uid, byName: by.name, at: serverTimestamp(), reason } : null,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+/** Admin: BEOs with an open delete request from Sales. */
+export async function listDeleteRequests(max = 100): Promise<Beo[]> {
+  const snap = await getDocs(query(beosCol, where('deleteRequest.byUid', '!=', null), limit(max)))
+  return snap.docs.map((d) => ({ ...(d.data() as Beo), id: d.id })).filter((b) => !!b.deleteRequest)
+}
+
+/** Admin — or Sales for their own draft / never-confirmed pending BEO (rules). Revisions stay as an audit trail. */
 export async function deleteBeo(id: string) {
   const batch = writeBatch(db)
   batch.delete(doc(db, 'beos', id))
@@ -336,15 +365,23 @@ export interface Booking {
 }
 
 /**
- * Room clash check. BEOs hold customer data and Sales may only read their own, so every
- * submitted BEO also writes a small public `bookings/{beoId}` doc (date, room, time only).
+ * Room clash check. Every submitted BEO also writes a small `bookings/{beoId}` doc
+ * (date, room, time only) so the check is one cheap query per date.
  */
 export async function bookingsOnDate(date: string): Promise<Booking[]> {
   const snap = await getDocs(query(collection(db, 'bookings'), where('date', '==', date)))
   return snap.docs.map((d) => d.data() as Booking).filter((b) => b.status !== 'cancelled')
 }
 
+export type Revision = Beo & {
+  savedBy?: string
+  savedByName?: string
+  savedAt?: { toDate(): Date }
+  action?: 'submit' | 'edit' | 'confirm' | 'status'
+  prevStatus?: Beo['status'] | 'new'
+}
+
 export async function listRevisions(id: string) {
-  const snap = await getDocs(query(collection(db, 'beos', id, 'revisions'), orderBy('revision', 'desc')))
-  return snap.docs.map((d) => d.data() as Beo & { savedByName?: string; savedAt?: { toDate(): Date } })
+  const snap = await getDocs(query(collection(db, 'beos', id, 'revisions'), orderBy('savedAt', 'desc')))
+  return snap.docs.map((d) => d.data() as Revision)
 }

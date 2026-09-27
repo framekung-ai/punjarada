@@ -5,6 +5,7 @@ import { ThaiDatePicker } from '../../components/ThaiDatePicker'
 import { bookingsOnDate, findCustomer, type Booking } from '../../lib/db'
 import { thaiDate } from '../../lib/thai'
 import type { StepErrors } from './model'
+import { LayoutIcon, TypeIcon } from './icons'
 
 export interface StepProps {
   beo: Beo
@@ -13,11 +14,15 @@ export interface StepProps {
   errors: StepErrors
 }
 
-const TYPE_ICON: Record<string, string> = {
-  'ประชุม': '📋', 'กินเลี้ยง': '🥂', 'เกษียณอายุ': '🎖️', 'ส่งอาหารนอกสถานที่': '🚚', 'อื่นๆ': '✳️',
-}
-const LAYOUT_ICON: Record<string, string> = {
-  'โต๊ะจีน': '◯', 'โต๊ะกลม': '◯', 'โต๊ะเหลี่ยม': '▭', 'ชั้นเรียน': '☰', 'ตัวยู': '⊔', 'ใส่จาน (ไม่จัดโต๊ะ)': '🍱',
+const isOffsite = (t: string) => /นอกสถานที่|ส่งอาหาร/.test(t)
+const isMeeting = (t: string) => /ประชุม|สัมมนา|อบรม/.test(t)
+
+/** default table layout for an event type (by keyword, so renamed types still work) */
+function pickLayout(layouts: string[], type: string) {
+  const find = (re: RegExp) => layouts.find((l) => re.test(l))
+  if (isOffsite(type)) return find(/ใส่จาน|จาน/) ?? layouts[0] ?? ''
+  if (isMeeting(type)) return find(/ชั้นเรียน|ตัวยู/) ?? layouts[0] ?? ''
+  return find(/จีน|กลม/) ?? layouts[0] ?? ''
 }
 
 export function StepType({ beo, setBeo, catalog, errors }: StepProps) {
@@ -38,11 +43,11 @@ export function StepType({ beo, setBeo, catalog, errors }: StepProps) {
               eventType: t === 'อื่นๆ' ? (other || 'อื่นๆ') : t,
               seating: {
                 ...b.seating,
-                layout: b.seating.layout || (t === 'ประชุม' ? 'ชั้นเรียน' : t === 'ส่งอาหารนอกสถานที่' ? 'ใส่จาน (ไม่จัดโต๊ะ)' : 'โต๊ะจีน'),
+                layout: b.seating.layout || pickLayout(catalog.settings.tableLayouts, t),
               },
-              event: { ...b.event, room: b.event.room || (t === 'ส่งอาหารนอกสถานที่' ? 'นอกสถานที่' : '') },
+              event: { ...b.event, room: b.event.room || (isOffsite(t) ? 'นอกสถานที่' : '') },
             }))}>
-              <span className="ico">{TYPE_ICON[t] ?? '•'}</span>
+              <span className="ico"><TypeIcon name={t} /></span>
               <strong>{t}</strong>
             </button>
           )
@@ -113,7 +118,7 @@ export function StepCustomer({ beo, setBeo, errors, onRegular }: StepProps & { o
 
 export const DEFAULT_NAME_PRESETS = ['งานเลี้ยงรุ่น', 'งานเกษียณอายุราชการ', 'งานสังสรรค์ภายใน', 'งานอบรมภายใน']
 
-const QUICK_TIMES: [string, string, string][] = [['เช้า', '09:00', '12:00'], ['กลางวัน', '11:30', '14:00'], ['เย็น', '18:00', '22:00']]
+const QUICK_TIMES: [string, string, string][] = [['เช้า', '09:00', '12:00'], ['กลางวัน', '11:00', '14:00'], ['เย็น', '18:00', '22:00']]
 
 export function StepEvent({ beo, setBeo, catalog, errors }: StepProps) {
   const ev = beo.event
@@ -128,7 +133,8 @@ export function StepEvent({ beo, setBeo, catalog, errors }: StepProps) {
   }, [ev.date, beo.id])
   const clash = bookings.filter((b) => b.room === ev.room && ev.room !== 'นอกสถานที่')
   const floors = new Map<string, string[]>()
-  for (const r of catalog.settings.rooms) {
+  // inactive rooms are hidden — but keep the one already chosen on an older BEO so it stays visible
+  for (const r of catalog.settings.rooms.filter((x) => x.active !== false || x.name === ev.room)) {
     const f = r.floor || (r.name.startsWith('ปัญจดารา') ? 'ห้องปัญจดารา' : 'อื่นๆ')
     floors.set(f, [...(floors.get(f) ?? []), r.name])
   }
@@ -217,7 +223,7 @@ export function StepSeating({ beo, setBeo, catalog, errors }: StepProps) {
         <div className="choice-grid">
           {catalog.settings.tableLayouts.map((l) => (
             <button key={l} type="button" className={`choice${s.layout === l ? ' on' : ''}`} onClick={() => update({ layout: l })}>
-              <span className="ico">{LAYOUT_ICON[l] ?? '▢'}</span><strong>{l}</strong>
+              <span className="ico"><LayoutIcon name={l} /></span><strong>{l}</strong>
             </button>
           ))}
         </div>

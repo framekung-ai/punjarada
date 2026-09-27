@@ -5,7 +5,7 @@ import { CatalogProvider, useCatalog } from './lib/catalog'
 import { ConfirmProvider, Spinner, ToastProvider } from './components/ui'
 import { AppShell } from './components/Layout'
 import { Login } from './pages/Login'
-import { MyDocs, SalesHome } from './pages/sales/SalesPages'
+import { AllDocs, SalesHome } from './pages/sales/SalesPages'
 import { Wizard } from './pages/wizard/Wizard'
 import { BeoView } from './pages/BeoView'
 
@@ -35,7 +35,8 @@ function Gate() {
         <Route element={<AppShell />}>
           <Route path="/" element={<Navigate to={home} replace />} />
           <Route path="/sales" element={user.role === 'admin' ? <Navigate to="/admin" replace /> : <SalesHome />} />
-          <Route path="/sales/docs" element={<MyDocs />} />
+          <Route path="/sales/docs" element={<Navigate to="/sales" replace />} />
+          <Route path="/sales/all" element={<AllDocs />} />
           <Route path="/sales/new" element={<NeedCatalog><Wizard key="new" /></NeedCatalog>} />
           <Route path="/sales/beo/:id/edit" element={<NeedCatalog><Wizard /></NeedCatalog>} />
           <Route path="/beo/:id" element={<NeedCatalog><BeoView /></NeedCatalog>} />
