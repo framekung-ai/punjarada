@@ -149,7 +149,11 @@ export function priceBeo(beo: Beo, catalog: Pick<Catalog, 'focRules' | 'services
   const lines = [...base, ...focLines]
   const vatRate = catalog.settings.vatRate ?? 0.07
   const gross = lines.reduce((s, l) => s + toSatang(lineAmount(l)), 0)
-  const discount = Math.min(toSatang(beo.discount), gross)
+  // items given free by Admin keep their price on the document and are taken off here as discount
+  const freeValue = lines.filter((l) => l.free && l.kind !== 'foc').reduce((s, l) => s + toSatang(lineAmount(l)), 0)
+  const payable = gross - freeValue
+  const ruleDiscount = Math.max(0, Math.min(ruleAmount(beo, ctx.tables, payable), payable))
+  const discount = freeValue + ruleDiscount
   const subtotal = gross - discount
   const vat = beo.applyVat === false ? 0 : Math.round(subtotal * vatRate)
   const focValue = focLines.filter((l) => !l.declined).reduce((s, l) => s + toSatang(l.value ?? 0), 0)
@@ -170,8 +174,29 @@ export function priceBeo(beo: Beo, catalog: Pick<Catalog, 'focRules' | 'services
       vat: toBaht(vat),
       grandTotal: toBaht(subtotal + vat),
       focValue: toBaht(focValue),
+      ...(freeValue > 0 ? { freeValue: toBaht(freeValue) } : {}),
+      ...(ruleDiscount > 0 ? { ruleDiscount: toBaht(ruleDiscount) } : {}),
     },
   }
+}
+
+/** discount from the rule, in satang (percent is taken from what the customer pays after free items) */
+function ruleAmount(beo: Pick<Beo, 'discount' | 'discountRule'>, tables: number, payable: number): number {
+  const r = beo.discountRule
+  if (!r) return toSatang(beo.discount) // older BEOs: plain baht discount
+  const v = Math.max(0, Number(r.value) || 0)
+  if (r.kind === 'percent') return Math.round((payable * Math.min(v, 100)) / 100)
+  if (r.kind === 'perTable') return toSatang(v) * Math.max(0, tables)
+  return toSatang(v)
+}
+
+/** label for the discount row, e.g. “ส่วนลด 10%”, “ส่วนลดโต๊ะละ 200 บาท × 8 โต๊ะ” */
+export function discountLabel(beo: Pick<Beo, 'discountRule' | 'seating'>): string {
+  const r = beo.discountRule
+  if (!r) return 'ส่วนลด'
+  if (r.kind === 'percent') return `ส่วนลด ${Number(r.value).toLocaleString('th-TH', { maximumFractionDigits: 2 })}%`
+  if (r.kind === 'perTable') return `ส่วนลดโต๊ะละ ${Number(r.value).toLocaleString('th-TH')} บาท × ${beo.seating.tables} โต๊ะ`
+  return 'ส่วนลด'
 }
 
 function hintFor(rule: FocRule, ctx: PricingContext, included: Set<string>): string | null {

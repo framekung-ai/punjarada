@@ -364,7 +364,7 @@ export function CartSheet({ open, onClose, priced, updateLines, isAdmin }: {
           {ls.map((l) => (
             <div key={l.key} className="row" style={{ alignItems: 'flex-start' }}>
               <div className="grow">
-                <div style={{ fontWeight: 600 }}>{lineName(l, priced.lines)}{l.kind === 'addon' && <span className="badge gold" style={{ marginLeft: 6 }}>แลกซื้อ</span>}</div>
+                <div style={{ fontWeight: 600 }}>{lineName(l, priced.lines)}{l.kind === 'addon' && <span className="badge gold" style={{ marginLeft: 6 }}>แลกซื้อ</span>}{l.free && <span className="badge ok" style={{ marginLeft: 6 }}>ฟรี</span>}</div>
                 <div className="small muted">
                   {l.kind === 'foc' ? `${num(l.qty)} ${l.unit} · ${l.detail ?? ''}` : (
                     <>
@@ -386,7 +386,8 @@ export function CartSheet({ open, onClose, priced, updateLines, isAdmin }: {
       {priced.lines.length === 0 && <div className="muted center">ยังไม่มีรายการ</div>}
       <div className="card flat stack" style={{ gap: 4 }}>
         <div className="row between"><span>รวม</span><span className="num">{money(t.subtotal + t.discount)}</span></div>
-        {t.discount > 0 && <div className="row between"><span>ส่วนลด</span><span className="num">-{money(t.discount)}</span></div>}
+        {(t.freeValue ?? 0) > 0 && <div className="row between"><span>รายการฟรี</span><span className="num">-{money(t.freeValue ?? 0)}</span></div>}
+        {(t.ruleDiscount ?? t.discount - (t.freeValue ?? 0)) > 0 && <div className="row between"><span>ส่วนลด</span><span className="num">-{money(t.ruleDiscount ?? t.discount - (t.freeValue ?? 0))}</span></div>}
         <div className="row between" style={{ fontWeight: 700, fontSize: '1.1rem' }}><span>ยอดก่อน VAT</span><span className="num">{money(t.subtotal)}</span></div>
         <div className="small muted">คิด / ไม่คิด VAT 7% เลือกได้ในขั้นสุดท้าย</div>
       </div>

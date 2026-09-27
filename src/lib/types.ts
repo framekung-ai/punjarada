@@ -195,7 +195,9 @@ export interface BeoLine {
   unitPrice: number
   course?: CourseId
   setItems?: string[]
-  /** สไตล์อาหาร (set / item / addon) — ใช้เติม (ไทย) / (จีน) ท้ายชื่อเมื่อเลือกข้ามสไตล์ */
+  /** Admin ให้ฟรี — ราคาเดิมยังแสดง แต่หักออกเป็นส่วนลดในสรุปยอด */
+  free?: boolean
+  /** สไตล์อาหาร (set / item / addon) */
   cuisine?: Cuisine
   /** FOC only */
   focRuleId?: string
@@ -209,10 +211,23 @@ export interface BeoLine {
 
 export interface BeoTotals {
   subtotal: number
+  /** ส่วนลดรวม = ส่วนลดตามกติกา + มูลค่ารายการที่ให้ฟรี */
   discount: number
   vat: number
   grandTotal: number
   focValue: number
+  /** มูลค่ารายการที่ Admin ให้ฟรี (รวมอยู่ใน discount) */
+  freeValue?: number
+  /** ส่วนลดตามกติกา (% / บาท / ต่อโต๊ะ) (รวมอยู่ใน discount) */
+  ruleDiscount?: number
+}
+
+/** ส่วนลดที่ Admin มอบให้ — คำนวณใหม่ทุกครั้งที่รายการเปลี่ยน */
+export type DiscountKind = 'percent' | 'amount' | 'perTable'
+export interface DiscountRule {
+  kind: DiscountKind
+  /** percent: 0–100 · amount: บาท · perTable: บาทต่อโต๊ะ */
+  value: number
 }
 
 export interface DeleteRequest {
@@ -251,7 +266,10 @@ export interface Beo {
     spareTables: number
   }
   lines: BeoLine[]
+  /** ส่วนลดเป็นบาท (แบบเดิม) — ใช้เมื่อไม่มี discountRule */
   discount: number
+  /** ส่วนลดที่ Admin มอบให้ตอนอนุมัติ (% / บาท / ต่อโต๊ะ) */
+  discountRule?: DiscountRule | null
   /** false = ไม่คิด VAT (ตัดสินใจในขั้นสุดท้าย). undefined = คิด VAT */
   applyVat?: boolean
   terms: string[]

@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { History, Pencil, Trash2 } from 'lucide-react'
+import { BadgePercent, CheckCircle2, History, Pencil, Trash2 } from 'lucide-react'
 import type { Beo } from '../lib/types'
-import { deleteBeo, getBeo, listRevisions, requestDeleteBeo, setBeoStatus, type Revision } from '../lib/db'
+import { deleteBeo, getBeo, listRevisions, requestDeleteBeo, setBeoStatus, submitBeo, type Revision } from '../lib/db'
+import { priceBeo } from '../lib/pricing'
+import { DiscountSheet, type DiscountResult } from './DiscountSheet'
 import { useAuth } from '../lib/auth'
 import { useReadyCatalog } from '../lib/catalog'
 import { BeoDocument } from '../beo/BeoDocument'
@@ -41,6 +43,8 @@ export function BeoView() {
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [revs, setRevs] = useState<Revision[] | null>(null)
+  const [discountOpen, setDiscountOpen] = useState(false)
+  const [approving, setApproving] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
   const isAdmin = user?.role === 'admin'
 
@@ -76,6 +80,20 @@ export function BeoView() {
       setBeo({ ...beo, status: s, ...(s === 'confirmed' ? { approvedByUid: actor.uid, approvedByName: actor.name } : {}) })
       toast(s === 'confirmed' ? `ยืนยันงานแล้ว — ผู้อนุมัติ: ${actor.name}` : 'อัปเดตสถานะแล้ว')
     } catch (e) { toast(errorText(e)) }
+  }
+
+  /** Admin: apply the discount / free items, re-price, and approve in one save (history: ยืนยันงาน) */
+  const approveWithDiscount = async (d: DiscountResult) => {
+    setApproving(true)
+    try {
+      const next: Beo = { ...beo, lines: d.lines, discountRule: d.discountRule, discount: d.discount }
+      const priced = priceBeo(next, catalog)
+      await submitBeo(id, { ...next, lines: priced.lines, totals: priced.totals, editedByUid: actor.uid, editedByName: actor.name }, { ...actor, isAdmin: true })
+      const fresh = await getBeo(id)
+      if (fresh) setBeo(fresh)
+      setDiscountOpen(false)
+      toast(priced.totals.discount > 0 ? `อนุมัติแล้ว — ส่วนลดรวม ${money(priced.totals.discount)} บาท` : `อนุมัติแล้ว — ผู้อนุมัติ: ${actor.name}`)
+    } catch (e) { toast(`อนุมัติไม่สำเร็จ: ${errorText(e)}`) } finally { setApproving(false) }
   }
 
   const removeNow = async () => {
@@ -146,8 +164,11 @@ export function BeoView() {
 
       {beo.status === 'pending' && (isAdmin ? (
         <div className="notice gold">
-          <span>งานนี้รอการยืนยัน — ตรวจรายละเอียดด้านล่าง แล้วกดยืนยัน (หรือกด “แก้ไข” เพื่อปรับก่อนยืนยัน)</span>
-          <button className="btn primary" onClick={() => void changeStatus('confirmed')}>ยืนยันงาน</button>
+          <span>งานนี้รอการอนุมัติ — ตรวจรายละเอียดด้านล่าง แล้วเลือก “อนุมัติ” หรือ “ส่วนลด & อนุมัติ” (กด “แก้ไข” เพื่อปรับรายการก่อน)</span>
+          <div className="approve-actions">
+            <button className="btn" onClick={() => setDiscountOpen(true)}><BadgePercent size={18} aria-hidden /> ส่วนลด &amp; อนุมัติ</button>
+            <button className="btn primary" onClick={() => void changeStatus('confirmed')}><CheckCircle2 size={18} aria-hidden /> อนุมัติ</button>
+          </div>
         </div>
       ) : <div className="notice gold">ส่งแล้ว รอ Admin ยืนยัน — ยังแก้ไขได้จนกว่า Admin จะยืนยัน</div>)}
       {!isAdmin && beo.status === 'confirmed' && (
@@ -161,6 +182,11 @@ export function BeoView() {
           {beo.status !== 'cancelled' && beo.status !== 'draft' && <button className="btn small danger" onClick={() => void changeStatus('cancelled')}>ยกเลิกงาน</button>}
           <button className="btn small danger" style={{ marginLeft: 'auto' }} onClick={() => void removeNow()}>ลบ</button>
         </div>
+      )}
+
+      {isAdmin && discountOpen && (
+        <DiscountSheet open beo={beo} catalog={catalog} busy={approving} onClose={() => setDiscountOpen(false)}
+          title="มอบส่วนลดและอนุมัติ" confirmText="ให้ส่วนลดและอนุมัติ" onApply={approveWithDiscount} />
       )}
 
       <ScaledDoc><BeoDocument beo={beo} settings={catalog.settings} /></ScaledDoc>
@@ -180,7 +206,7 @@ export function BeoView() {
               {r.savedBy && r.savedBy === user.uid && <span className="badge" style={{ marginLeft: 6 }}>คุณ</span>}
             </div>
             <span className="num">{r.totals ? money(r.totals.grandTotal) : ''}</span>
-            <div className="small">{revText(r)} · Rev.{r.revision ?? 0}</div>
+            <div className="small">{revText(r)} · Rev.{r.revision ?? 0}{r.totals?.discount ? ` · ส่วนลดรวม ${money(r.totals.discount)}` : ''}</div>
             <span className="small muted">{r.savedAt?.toDate().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</span>
           </div>
         ))}

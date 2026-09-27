@@ -4,11 +4,15 @@ import { Field } from '../../components/ui'
 import { BeoDocument } from '../../beo/BeoDocument'
 import { ScaledDoc } from '../../beo/ScaledDoc'
 import { money } from '../../lib/thai'
+import { BadgePercent } from 'lucide-react'
+import { discountLabel } from '../../lib/pricing'
+import { DiscountSheet } from '../DiscountSheet'
 
 export function StepConfirm({ beo, setBeo, catalog, isAdmin }: {
   beo: Beo; setBeo: (fn: (b: Beo) => Beo) => void; catalog: Catalog; isAdmin: boolean
 }) {
   const [custom, setCustom] = useState('')
+  const [discOpen, setDiscOpen] = useState(false)
   const presets = catalog.settings.remarkPresets
   const toggle = (t: string) => setBeo((b) => ({ ...b, terms: b.terms.includes(t) ? b.terms.filter((x) => x !== t) : [...b.terms, t] }))
   const extra = beo.terms.filter((t) => !presets.includes(t))
@@ -34,10 +38,21 @@ export function StepConfirm({ beo, setBeo, catalog, isAdmin }: {
         <textarea className="input" value={beo.note} placeholder="เช่น ขอโต๊ะหน้าใหญ่, จัดซุ้มถ่ายรูปหน้าห้อง" onChange={(e) => setBeo((b) => ({ ...b, note: e.target.value }))} />
       </Field>
       {isAdmin && (
-        <Field label="ส่วนลด (บาท) — เฉพาะ Admin">
-          <input className="input num" inputMode="decimal" value={beo.discount || ''} placeholder="0"
-            onChange={(e) => setBeo((b) => ({ ...b, discount: Number(e.target.value.replace(/[^\d.]/g, '')) || 0 }))} />
-        </Field>
+        <div className="card flat row wrap" style={{ gap: 10 }}>
+          <div className="grow">
+            <strong>ส่วนลด — เฉพาะ Admin</strong>
+            <div className="small muted">
+              {beo.totals.discount > 0
+                ? [(beo.totals.freeValue ?? 0) > 0 && `ฟรี ${beo.lines.filter((l) => l.free).length} รายการ`, (beo.totals.ruleDiscount ?? 0) > 0 && discountLabel(beo)].filter(Boolean).join(' · ') + ` · ส่วนลดรวม ${money(beo.totals.discount)} บาท`
+                : 'ยังไม่มีส่วนลด'}
+            </div>
+          </div>
+          <button type="button" className="btn" onClick={() => setDiscOpen(true)}><BadgePercent size={18} aria-hidden /> {beo.totals.discount > 0 ? 'แก้ไขส่วนลด' : 'มอบส่วนลด'}</button>
+        </div>
+      )}
+      {isAdmin && discOpen && (
+        <DiscountSheet open beo={beo} catalog={catalog} title="มอบส่วนลด" confirmText="ใช้ส่วนลด" onClose={() => setDiscOpen(false)}
+          onApply={(d) => { setBeo((b) => ({ ...b, lines: d.lines, discountRule: d.discountRule, discount: d.discount })); setDiscOpen(false) }} />
       )}
       <div className="card flat stack" style={{ gap: 8 }}>
         <strong>ภาษีมูลค่าเพิ่ม</strong>

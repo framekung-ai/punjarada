@@ -58,3 +58,7 @@
 .bd-watermark.gold { color: rgba(217, 165, 20, .12); }
 .bd-group td.bd-sectotal { text-align: right; font-size: 12.5px; color: #075f91; font-weight: 700; }
 .bd-pertable { font-weight: 600; color: #4a5566; }
+
+.bd-tag.free { background: #e3f4ea; color: #1f7a3d; }
+.bd-sum-right .bd-disc-total { border-top: 1px dashed #cfd8e3; }
+.bd-sum-right .bd-disc-total span { color: #1b2430; font-weight: 600; }

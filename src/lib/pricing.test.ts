@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import seed from '../seed/seed.json'
 import type { Beo, BeoLine, Catalog } from './types'
-import { checkBalance, priceBeo, suggestFor } from './pricing'
+import { checkBalance, discountLabel, priceBeo, suggestFor } from './pricing'
 import { bahtText, thaiDate } from './thai'
 
 const catalog = { ...(seed as unknown as Omit<Catalog, 'version'>), version: 1 } as Catalog
@@ -105,6 +105,44 @@ describe('FOC rules', () => {
     expect(r.totals.subtotal).toBe(29000)
     expect(r.totals.vat).toBe(2030)
     expect(r.totals.grandTotal).toBe(31030)
+  })
+})
+
+describe('Admin discount & free items', () => {
+  // ชุดเจ้าสัว 3,000 × 10 โต๊ะ = 30,000 + ยำวุ้นเส้น 380 × 10 = 3,800 → 33,800
+  const lines = () => [set('set-chaosua', 10), item('ยำวุ้นเส้น', 10)]
+  it('percent is taken from the full bill', () => {
+    const b = { ...beo(lines(), 10), discountRule: { kind: 'percent' as const, value: 10 } }
+    const r = priceBeo(b, catalog)
+    expect(r.totals.ruleDiscount).toBe(3380)
+    expect(r.totals.discount).toBe(3380)
+    expect(r.totals.subtotal).toBe(30420)
+    expect(discountLabel(b)).toBe('ส่วนลด 10%')
+  })
+  it('per table multiplies by the number of tables', () => {
+    const b = { ...beo(lines(), 10), discountRule: { kind: 'perTable' as const, value: 200 } }
+    expect(priceBeo(b, catalog).totals.discount).toBe(2000)
+    expect(discountLabel(b)).toBe('ส่วนลดโต๊ะละ 200 บาท × 10 โต๊ะ')
+  })
+  it('baht discount never goes below zero', () => {
+    const b = { ...beo(lines(), 10), discountRule: { kind: 'amount' as const, value: 999999 } }
+    expect(priceBeo(b, catalog).totals.subtotal).toBe(0)
+  })
+  it('free items keep their price on the document and are deducted in the summary', () => {
+    const ls = lines(); ls[1] = { ...ls[1], free: true }
+    const b = { ...beo(ls, 10), discountRule: { kind: 'percent' as const, value: 10 } }
+    const r = priceBeo(b, catalog)
+    expect(r.totals.freeValue).toBe(3800)
+    expect(r.totals.ruleDiscount).toBe(3000) // 10% of what is still charged (30,000)
+    expect(r.totals.discount).toBe(6800)
+    expect(r.totals.subtotal).toBe(27000)
+    expect(r.totals.subtotal + r.totals.discount).toBe(33800) // รวมเป็นเงิน unchanged
+  })
+  it('giving something free does not lose FOC drinks', () => {
+    const ls = [set('set-hongte', 10)]
+    const full = priceBeo(beo(ls, 10), catalog).lines.filter((l) => l.kind === 'foc').length
+    const free = priceBeo(beo([{ ...ls[0], free: true }], 10), catalog).lines.filter((l) => l.kind === 'foc').length
+    expect(free).toBe(full)
   })
 })
 

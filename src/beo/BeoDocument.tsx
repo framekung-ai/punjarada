@@ -1,6 +1,6 @@
 import { forwardRef } from 'react'
 import type { Beo, BeoLine, Settings } from '../lib/types'
-import { lineAmount } from '../lib/pricing'
+import { discountLabel, lineAmount } from '../lib/pricing'
 import { lineName } from '../lib/cuisine'
 import { bahtText, money, num, phoneFormat, thaiDate, timeRange, todayIso } from '../lib/thai'
 import './beo-document.css'
@@ -38,6 +38,10 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
   ].filter(Boolean).join(' · ')
   // ชื่อผู้อนุมัติ appears once Admin has confirmed the BEO (blank while draft / waiting for approval)
   const approver = beo.status === 'confirmed' || beo.status === 'completed' || beo.status === 'cancelled' ? (beo.approvedByName ?? '') : ''
+  // discount breakdown: free items + % / baht / per-table discount (older BEOs only have totals.discount)
+  const freeValue = beo.totals.freeValue ?? 0
+  const freeCount = beo.lines.filter((l) => l.free && l.kind !== 'foc').length
+  const ruleDiscount = beo.totals.ruleDiscount ?? Math.max(0, beo.totals.discount - freeValue)
   const numbering = new Map([...food, ...services, ...foc].map((l, i) => [l.key, i + 1]))
 
   const lineRow = (l: BeoLine, amount = true) => {
@@ -46,7 +50,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
       <tr key={l.key}>
         <td className="c">{no}</td>
         <td>
-          <div className="bd-item">{lineName(l, beo.lines)}{l.kind === 'addon' && <span className="bd-tag">สิทธิแลกซื้อ</span>}</div>
+          <div className="bd-item">{lineName(l, beo.lines)}{l.kind === 'addon' && <span className="bd-tag">สิทธิแลกซื้อ</span>}{l.free && <span className="bd-tag free">ฟรี</span>}</div>
           {l.detail && <div className="bd-sub">{l.detail}</div>}
           {l.setItems && l.setItems.length > 0 && (
             <ol className="bd-setlist">{l.setItems.map((n, i) => <li key={i}>{n}</li>)}</ol>
@@ -151,7 +155,9 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
         </div>
         <div className="bd-sum-right">
           <div><span>รวมเป็นเงิน</span><b>{money(beo.totals.subtotal + beo.totals.discount)}</b></div>
-          {beo.totals.discount > 0 && <div><span>ส่วนลด</span><b>-{money(beo.totals.discount)}</b></div>}
+          {freeValue > 0 && <div><span>รายการฟรี ({freeCount} รายการ)</span><b>-{money(freeValue)}</b></div>}
+          {ruleDiscount > 0 && <div><span>{discountLabel(beo)}</span><b>-{money(ruleDiscount)}</b></div>}
+          {freeValue > 0 && ruleDiscount > 0 && <div className="bd-disc-total"><span>ส่วนลดรวม</span><b>-{money(beo.totals.discount)}</b></div>}
           {beo.totals.discount > 0 && <div><span>ยอดหลังหักส่วนลด</span><b>{money(beo.totals.subtotal)}</b></div>}
           {beo.applyVat === false
             ? <div><span>ไม่คิดภาษีมูลค่าเพิ่ม</span><b>-</b></div>

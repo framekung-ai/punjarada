@@ -25,7 +25,8 @@ export function copyAsNew(src: Beo, user: AppUser): Beo {
     customer: { ...src.customer },
     event: { ...src.event, date: '' },
     seating: { ...src.seating },
-    lines: src.lines.filter((l) => l.kind !== 'foc').map((l) => ({ ...l, key: newKey() })),
+    // a copy starts at normal prices: no free items / discount from the original approval
+    lines: src.lines.filter((l) => l.kind !== 'foc').map(({ free: _free, ...l }) => { void _free; return { ...l, key: newKey() } }),
     terms: [...src.terms],
     note: src.note,
   }
