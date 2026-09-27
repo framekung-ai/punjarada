@@ -1,11 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Beo, BeoLine, Catalog, MealSlot, MenuItem, MenuSet, Service } from '../../lib/types'
+import type { Beo, BeoLine, Catalog, Cuisine, MealSlot, MenuItem, MenuSet, Service } from '../../lib/types'
+import { CUISINE_LABEL } from '../../lib/types'
+import { cuisinesIn, itemCuisine, lineName, mainCuisine, setCuisine } from '../../lib/cuisine'
 import { checkBalance, displayName, lineAmount, ruleMatches, suggestFor, type PricingResult } from '../../lib/pricing'
 import { money, num } from '../../lib/thai'
 import { Field, Sheet, Stepper, useToast } from '../../components/ui'
 import { addonLine, defaultQty, itemLine, serviceLine, setLine, templateFor } from './model'
 
-type Tab = 'set' | 'menu' | 'service'
+type Tab = 'set-cn' | 'set-th' | 'menu-cn' | 'menu-th' | 'service'
+const TAB_LABEL: Record<Tab, string> = {
+  'set-cn': 'เซ็ตเมนูจีน', 'set-th': 'เซ็ตเมนูไทย', 'menu-cn': 'เลือกเอง จีน', 'menu-th': 'เลือกเอง ไทย', service: 'บริการ',
+}
+
+/** tabs that have something to show (a style with no sets / dishes yet is hidden) */
+function availableTabs(catalog: Catalog): Tab[] {
+  const hasSet = (c: Cuisine) => catalog.menuSets.some((s) => s.active && s.visibility !== 'hidden' && setCuisine(s) === c)
+  const hasMenu = (c: Cuisine) => catalog.menuItems.some((m) => m.active && !m.setOnly && itemCuisine(m, catalog.categories) === c)
+  const tabs: Tab[] = []
+  if (hasSet('cn')) tabs.push('set-cn')
+  if (hasSet('th')) tabs.push('set-th')
+  if (hasMenu('cn')) tabs.push('menu-cn')
+  if (hasMenu('th')) tabs.push('menu-th')
+  tabs.push('service')
+  return tabs
+}
+
+function firstTab(beo: Beo, tabs: Tab[]): Tab {
+  const set = beo.lines.find((l) => l.kind === 'set')
+  const item = beo.lines.find((l) => l.kind === 'item')
+  const want: Tab | null = set ? `set-${set.cuisine ?? 'cn'}` : item ? `menu-${item.cuisine ?? 'cn'}` : null
+  return want && tabs.includes(want) ? want : tabs[0]
+}
 
 interface Props {
   beo: Beo
@@ -20,14 +45,16 @@ interface Props {
 
 export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin, cartOpen, setCartOpen }: Props) {
   const toast = useToast()
-  const hasSet = beo.lines.some((l) => l.kind === 'set')
-  const [tab, setTab] = useState<Tab>(hasSet || beo.lines.length === 0 ? 'set' : 'menu')
+  const tabs = availableTabs(catalog)
+  const [tab, setTab] = useState<Tab>(() => firstTab(beo, tabs))
+  const cuisineOf = (m: MenuItem) => itemCuisine(m, catalog.categories)
+  const mixed = cuisinesIn(beo.lines).size > 1
   const [openSet, setOpenSet] = useState<MenuSet | null>(null)
   const [picking, setPicking] = useState<MenuItem | null>(null)
   const [svcPick, setSvcPick] = useState<Service | null>(null)
   const [slotOpen, setSlotOpen] = useState<MealSlot | null>(null)
 
-  const template = templateFor(catalog, beo.seating.layout)
+  const template = templateFor(catalog, beo.seating.layout, beo.lines)
   const balance = checkBalance(priced.lines, catalog, template.slots)
   const missing = balance.filter((s) => !s.filled)
   const qty0 = defaultQty(beo)
@@ -51,7 +78,7 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
 
   const addItem = (m: MenuItem) => {
     if (m.variants.length || m.priceType !== 'fixed') { setPicking(m); return }
-    add(itemLine(m, qty0))
+    add(itemLine(m, qty0, undefined, cuisineOf(m)))
   }
 
   return (
@@ -76,19 +103,22 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
       )}
       {priced.hints.slice(0, 1).map((h) => <div key={h.ruleId} className="notice gold">💡 {h.text}</div>)}
 
-      <div className="chips">
-        {([['set', 'เซ็ตเมนู'], ['menu', 'เลือกเอง'], ['service', 'บริการ']] as [Tab, string][]).map(([t, label]) => (
-          <button key={t} type="button" className={`chip${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>{label}</button>
+      <div className="chips scroll food-tabs" role="tablist" aria-label="ประเภทรายการ">
+        {tabs.map((t) => (
+          <button key={t} type="button" role="tab" aria-selected={tab === t} className={`chip${tab === t ? ' on' : ''}`} onClick={() => setTab(t)}>
+            {TAB_LABEL[t]}
+          </button>
         ))}
       </div>
+      {mixed && <div className="small muted">เลือกอาหารทั้งไทยและจีน — ในเอกสารจะมี (ไทย) / (จีน) ต่อท้ายชื่อรายการให้อัตโนมัติ</div>}
 
-      {tab === 'set' && (
-        <SetTab catalog={catalog} beo={beo} isRegular={isRegular} isAdmin={isAdmin}
+      {(tab === 'set-cn' || tab === 'set-th') && (
+        <SetTab key={tab} cuisine={tab === 'set-th' ? 'th' : 'cn'} catalog={catalog} beo={beo} isRegular={isRegular} isAdmin={isAdmin}
           qtyOf={(id) => qtyOf((l) => l.kind === 'set' && l.refId === id)} onOpen={setOpenSet}
           onAdd={(s) => { add(setLine(s, qty0)); toast(`เพิ่ม${s.name} ${qty0} โต๊ะ`) }} />
       )}
-      {tab === 'menu' && (
-        <MenuTab catalog={catalog} beo={beo} onAdd={addItem}
+      {(tab === 'menu-cn' || tab === 'menu-th') && (
+        <MenuTab key={tab} cuisine={tab === 'menu-th' ? 'th' : 'cn'} catalog={catalog} beo={beo} onAdd={addItem}
           lineOf={(id) => beo.lines.find((l) => l.kind === 'item' && l.refId === id)} changeQty={changeQty} />
       )}
       {tab === 'service' && (
@@ -123,7 +153,7 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
         )}>
         {openSet && (
           <>
-            <div className="row wrap"><span className="badge">{num(openSet.pricePerTable)} บาท / โต๊ะ</span><span className="badge gray">{openSet.seats}</span></div>
+            <div className="row wrap"><span className="badge">{num(openSet.pricePerTable)} บาท / โต๊ะ</span>{openSet.seats && <span className="badge gray">{openSet.seats}</span>}<span className="badge gray">{CUISINE_LABEL[setCuisine(openSet)]}</span></div>
             <ol style={{ margin: 0, paddingLeft: 22, lineHeight: 1.9 }}>{openSet.items.map((i, k) => <li key={k}>{i.name}</li>)}</ol>
             {openSet.drinksText && <div className="small">เครื่องดื่มในเซ็ต: {openSet.drinksText}</div>}
             {openSet.note && <div className="small muted">{openSet.note}</div>}
@@ -136,7 +166,7 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
                   return (
                     <div key={o.menuItemId} className="row between">
                       <span>{o.name} <span className="muted small">{m && m.price > o.specialPrice ? <s>{num(m.price)}</s> : null} {num(o.specialPrice)} บาท</span></span>
-                      <button className="btn small" disabled={used >= o.maxQty} onClick={() => { add(addonLine(o, m?.course)); toast(`เพิ่ม ${o.name}`) }}>{used >= o.maxQty ? 'ใช้สิทธิ์แล้ว' : '+ แลกซื้อ'}</button>
+                      <button className="btn small" disabled={used >= o.maxQty} onClick={() => { add(addonLine(o, m?.course, m ? cuisineOf(m) : setCuisine(openSet))); toast(`เพิ่ม ${o.name}`) }}>{used >= o.maxQty ? 'ใช้สิทธิ์แล้ว' : '+ แลกซื้อ'}</button>
                     </div>
                   )
                 })}
@@ -146,14 +176,14 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
         )}
       </Sheet>
 
-      <PickItemSheet item={picking} qty0={qty0} onClose={() => setPicking(null)} onAdd={(l) => { add(l); setPicking(null) }} />
+      <PickItemSheet item={picking} qty0={qty0} cuisine={picking ? cuisineOf(picking) : 'cn'} onClose={() => setPicking(null)} onAdd={(l) => { add(l); setPicking(null) }} />
 
       <ServiceSheet svc={svcPick} onClose={() => setSvcPick(null)} onAdd={(l) => { add(l); setSvcPick(null) }} />
 
       <Sheet open={!!slotOpen} onClose={() => setSlotOpen(null)} title={slotOpen ? `แนะนำ: ${slotOpen.label}` : ''}>
         {slotOpen && (
           <>
-            {suggestFor(slotOpen, priced.lines, catalog).map((m) => (
+            {suggestFor(slotOpen, priced.lines, catalog, 3, mainCuisine(beo.lines)).map((m) => (
               <div key={m.id} className="menu-card">
                 <div className="grow">
                   <div className="name">{displayName(m)} {m.tags.includes('แนะนำ') && <span className="badge gold">★</span>}</div>
@@ -162,7 +192,7 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
                 <button className="btn small primary" onClick={() => { addItem(m); setSlotOpen(null) }}>+ เพิ่ม</button>
               </div>
             ))}
-            <button className="btn ghost" onClick={() => { setTab('menu'); setSlotOpen(null) }}>ดูเมนูทั้งหมด</button>
+            <button className="btn ghost" onClick={() => { const t: Tab = `menu-${mainCuisine(beo.lines)}`; setTab(tabs.includes(t) ? t : tabs[0]); setSlotOpen(null) }}>ดูเมนูทั้งหมด</button>
           </>
         )}
       </Sheet>
@@ -172,12 +202,12 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
   )
 }
 
-function SetTab({ catalog, beo, isRegular, isAdmin, qtyOf, onOpen, onAdd }: {
-  catalog: Catalog; beo: Beo; isRegular: boolean; isAdmin: boolean
+function SetTab({ cuisine, catalog, beo, isRegular, isAdmin, qtyOf, onOpen, onAdd }: {
+  cuisine: Cuisine; catalog: Catalog; beo: Beo; isRegular: boolean; isAdmin: boolean
   qtyOf: (id: string) => number; onOpen: (s: MenuSet) => void; onAdd: (s: MenuSet) => void
 }) {
   const tables = beo.seating.tables
-  const sets = catalog.menuSets.filter((s) => s.active && (s.visibility === 'all' || (s.visibility === 'regularOnly' && (isRegular || isAdmin))))
+  const sets = catalog.menuSets.filter((s) => s.active && setCuisine(s) === cuisine && (s.visibility === 'all' || (s.visibility === 'regularOnly' && (isRegular || isAdmin))))
   const focFor = (s: MenuSet) => {
     const ctx = { tables, foodTotal: s.pricePerTable * tables, pricePerTable: s.pricePerTable }
     const out: string[] = []
@@ -192,7 +222,7 @@ function SetTab({ catalog, beo, isRegular, isAdmin, qtyOf, onOpen, onAdd }: {
     }
     return out
   }
-  if (sets.length === 0) return <div className="notice info">ยังไม่มีเซ็ตเมนู</div>
+  if (sets.length === 0) return <div className="notice info">ยังไม่มีเซ็ตเมนู{CUISINE_LABEL[cuisine]}</div>
   return (
     <div className="menu-list">
       {sets.map((s) => {
@@ -204,7 +234,7 @@ function SetTab({ catalog, beo, isRegular, isAdmin, qtyOf, onOpen, onAdd }: {
               <strong>{s.name}</strong>
               {s.visibility === 'regularOnly' && <span className="badge gold">ลูกค้าประจำ</span>}
             </div>
-            <div className="price num">{num(s.pricePerTable)} <span className="small muted">บาท / โต๊ะ · {s.seats}</span></div>
+            <div className="price num">{num(s.pricePerTable)} <span className="small muted">บาท / โต๊ะ{s.seats ? ` · ${s.seats}` : ''}</span></div>
             <div className="small muted">{s.items.slice(0, 4).map((i) => i.name).join(' · ')}{s.items.length > 4 ? ` +${s.items.length - 4}` : ''}</div>
             {foc.length > 0 && <div className="small"><span className="badge gold">ได้รับ</span> {foc.join(', ')}</div>}
             <div className="row">
@@ -219,34 +249,36 @@ function SetTab({ catalog, beo, isRegular, isAdmin, qtyOf, onOpen, onAdd }: {
   )
 }
 
-function MenuTab({ catalog, beo, onAdd, lineOf, changeQty }: {
-  catalog: Catalog; beo: Beo; onAdd: (m: MenuItem) => void
+function MenuTab({ cuisine, catalog, beo, onAdd, lineOf, changeQty }: {
+  cuisine: Cuisine; catalog: Catalog; beo: Beo; onAdd: (m: MenuItem) => void
   lineOf: (id: string) => BeoLine | undefined; changeQty: (key: string, q: number) => void
 }) {
+  const cats = catalog.categories.filter((c) => c.active && (c.cuisine ?? 'cn') === cuisine)
+  const pool = useMemo(() => catalog.menuItems.filter((m) => m.active && !m.setOnly && itemCuisine(m, catalog.categories) === cuisine), [catalog, cuisine])
+  const hasStar = pool.some((m) => m.tags.includes('แนะนำ'))
+  const hasVeg = pool.some((m) => m.tags.includes('เจ'))
   const [q, setQ] = useState('')
-  const [cat, setCat] = useState<string>('★')
+  const [cat, setCat] = useState<string>(hasStar ? '★' : (cats[0]?.id ?? '★'))
   const [veg, setVeg] = useState(false)
   const items = useMemo(() => {
     const term = q.trim().replace(/\s+/g, '')
-    return catalog.menuItems.filter((m) => {
-      if (!m.active || m.setOnly) return false
+    return pool.filter((m) => {
       if (veg && !m.tags.includes('เจ')) return false
       if (term) return (m.name + m.variants.join('')).replace(/\s+/g, '').includes(term)
       if (cat === '★') return m.tags.includes('แนะนำ')
       return m.categoryId === cat
     })
-  }, [catalog.menuItems, q, cat, veg])
-  const cats = catalog.categories.filter((c) => c.active)
+  }, [pool, q, cat, veg])
   return (
     <div className="stack">
-      <input className="input" type="search" placeholder="🔍 ค้นหาเมนู เช่น กะพง, ต้มยำ" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input className="input" type="search" placeholder={`🔍 ค้นหาเมนู${CUISINE_LABEL[cuisine]} เช่น ${cuisine === 'th' ? 'น้ำพริก, แกงเขียวหวาน' : 'กะพง, ต้มยำ'}`} value={q} onChange={(e) => setQ(e.target.value)} />
       {!q && (
         <div className="chips scroll">
-          <button type="button" className={`chip small${cat === '★' ? ' on' : ''}`} onClick={() => setCat('★')}>★ แนะนำ</button>
+          {hasStar && <button type="button" className={`chip small${cat === '★' ? ' on' : ''}`} onClick={() => setCat('★')}>★ แนะนำ</button>}
           {cats.map((c) => <button key={c.id} type="button" className={`chip small${cat === c.id ? ' on' : ''}`} onClick={() => setCat(c.id)}>{c.name}</button>)}
         </div>
       )}
-      <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={veg} onChange={(e) => setVeg(e.target.checked)} /> เฉพาะอาหารเจ</label>
+      {hasVeg && <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={veg} onChange={(e) => setVeg(e.target.checked)} /> เฉพาะอาหารเจ</label>}
       {items.length === 0 ? <div className="muted center" style={{ padding: 24 }}>ไม่พบเมนู</div> : (
         <div className="menu-list">
           {items.map((m) => {
@@ -271,7 +303,7 @@ function MenuTab({ catalog, beo, onAdd, lineOf, changeQty }: {
   )
 }
 
-function PickItemSheet({ item, qty0, onClose, onAdd }: { item: MenuItem | null; qty0: number; onClose: () => void; onAdd: (l: BeoLine) => void }) {
+function PickItemSheet({ item, qty0, cuisine, onClose, onAdd }: { item: MenuItem | null; qty0: number; cuisine: Cuisine; onClose: () => void; onAdd: (l: BeoLine) => void }) {
   const [variant, setVariant] = useState('')
   const [opt, setOpt] = useState(0)
   const [qty, setQty] = useState(qty0)
@@ -279,8 +311,8 @@ function PickItemSheet({ item, qty0, onClose, onAdd }: { item: MenuItem | null; 
   if (!item) return null
   const option = item.priceType === 'byOption' ? item.options?.[opt] : undefined
   return (
-    <Sheet open onClose={onClose} title={item.name}
-      footer={<button className="btn primary block big" onClick={() => onAdd(itemLine(item, qty, { variant: variant || undefined, option }))}>เพิ่มรายการ</button>}>
+    <Sheet open onClose={onClose} title={`${item.name} (${CUISINE_LABEL[cuisine]})`}
+      footer={<button className="btn primary block big" onClick={() => onAdd(itemLine(item, qty, { variant: variant || undefined, option }, cuisine))}>เพิ่มรายการ</button>}>
       {item.variants.length > 0 && (
         <Field label="เลือก">
           <div className="chips">{item.variants.map((v) => <button key={v} type="button" className={`chip${variant === v ? ' on' : ''}`} onClick={() => setVariant(v)}>{v}</button>)}</div>
@@ -334,7 +366,7 @@ export function CartSheet({ open, onClose, priced, updateLines, isAdmin }: {
           {ls.map((l) => (
             <div key={l.key} className="row" style={{ alignItems: 'flex-start' }}>
               <div className="grow">
-                <div style={{ fontWeight: 600 }}>{l.name}{l.kind === 'addon' && <span className="badge gold" style={{ marginLeft: 6 }}>แลกซื้อ</span>}</div>
+                <div style={{ fontWeight: 600 }}>{lineName(l, priced.lines)}{l.kind === 'addon' && <span className="badge gold" style={{ marginLeft: 6 }}>แลกซื้อ</span>}</div>
                 <div className="small muted">
                   {l.kind === 'foc' ? `${num(l.qty)} ${l.unit} · ${l.detail ?? ''}` : (
                     <>

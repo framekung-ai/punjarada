@@ -55,6 +55,16 @@ export async function saveCatalogDoc(name: CatalogCollection, id: string, data: 
   if (i >= 0) list[i] = doc; else list.push(doc)
   bump()
 }
+export async function saveCatalogDocs(ops: { name: CatalogCollection; id: string; data: object }[]) {
+  if (!store.catalog) return
+  for (const { name, id, data } of ops) {
+    const list = store.catalog[name] as { id: string }[]
+    const d = { ...(data as object), id } as { id: string }
+    const i = list.findIndex((x) => x.id === id)
+    if (i >= 0) list[i] = d; else list.push(d)
+  }
+  bump()
+}
 export async function deleteCatalogDoc(name: CatalogCollection, id: string) {
   if (!store.catalog) return
   ;(store.catalog[name] as { id: string }[]) = (store.catalog[name] as { id: string }[]).filter((x) => x.id !== id)

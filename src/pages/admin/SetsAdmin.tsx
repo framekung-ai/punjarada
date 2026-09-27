@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import type { CourseId, DrinkKey, MenuSet, SetItem } from '../../lib/types'
-import { COURSE_LABEL } from '../../lib/types'
+import type { CourseId, Cuisine, DrinkKey, MenuSet, SetItem } from '../../lib/types'
+import { COURSE_LABEL, CUISINE_LABEL, CUISINES } from '../../lib/types'
+import { guessCourse, itemCuisine, setCuisine } from '../../lib/cuisine'
 import { useReadyCatalog } from '../../lib/catalog'
 import { deleteCatalogDoc, newId, saveCatalogDoc } from '../../lib/db'
 import { displayName } from '../../lib/pricing'
@@ -10,8 +11,8 @@ import { useSaver } from './CatalogAdmin'
 
 const COURSES = Object.keys(COURSE_LABEL) as CourseId[]
 
-const blankSet = (): MenuSet => ({
-  id: '', name: '', pricePerTable: 3000, servingSize: 'large', seats: '10–12 ที่', items: [], drinksText: '',
+const blankSet = (cuisine: Cuisine): MenuSet => ({
+  id: '', name: '', cuisine, pricePerTable: cuisine === 'th' ? 2500 : 3000, servingSize: 'large', seats: '10–12 ที่', items: [], drinksText: '',
   includes: [], addOnOffers: [], visibility: 'all', note: '', active: true, sort: 99,
 })
 
@@ -20,21 +21,31 @@ export function SetsAdmin() {
   const save = useSaver()
   const confirm = useConfirm()
   const [edit, setEdit] = useState<MenuSet | null>(null)
+  const [style, setStyle] = useState<Cuisine>('cn')
+  const list = catalog.menuSets.filter((s) => setCuisine(s) === style)
   return (
     <div className="stack">
       <div className="page-head">
         <h1>เซ็ตเมนู</h1>
-        <button className="btn primary" onClick={() => setEdit(blankSet())}>+ สร้างเซ็ต</button>
+        <button className="btn primary" onClick={() => setEdit(blankSet(style))}>+ สร้างเซ็ต{CUISINE_LABEL[style]}</button>
       </div>
+      <div className="seg" role="tablist" aria-label="สไตล์อาหาร">
+        {CUISINES.map((k) => (
+          <button key={k} role="tab" aria-selected={style === k} className={style === k ? 'on' : ''} onClick={() => setStyle(k)}>
+            เซ็ตเมนู{CUISINE_LABEL[k]}<span className="n">{catalog.menuSets.filter((x) => setCuisine(x) === k).length}</span>
+          </button>
+        ))}
+      </div>
+      {list.length === 0 && <div className="notice info">ยังไม่มีเซ็ตเมนู{CUISINE_LABEL[style]} — กด “สร้างเซ็ต” หรือนำเข้าไฟล์ CSV ที่หน้า “นำเข้าข้อมูล”</div>}
       <div className="menu-list">
-        {catalog.menuSets.map((s) => (
+        {list.map((s) => (
           <div key={s.id} className="set-card" style={s.active ? undefined : { opacity: .55 }}>
             <div className="row between"><strong>{s.name}</strong>
               <span className={`badge ${s.visibility === 'all' ? 'ok' : s.visibility === 'regularOnly' ? 'gold' : 'gray'}`}>
                 {s.visibility === 'all' ? 'ทุกคน' : s.visibility === 'regularOnly' ? 'ลูกค้าประจำ' : 'ซ่อน'}
               </span>
             </div>
-            <div className="price num">{num(s.pricePerTable)} <span className="small muted">บาท / โต๊ะ · {s.seats}</span></div>
+            <div className="price num">{num(s.pricePerTable)} <span className="small muted">บาท / โต๊ะ{s.seats ? ` · ${s.seats}` : ''}</span></div>
             <div className="small muted">{s.items.map((i) => i.name).join(' · ')}</div>
             <div className="row">
               <button className="btn small" onClick={() => setEdit(s)}>แก้ไข</button>
@@ -61,8 +72,9 @@ function SetEditor({ value, onClose, onSave, onDelete }: {
   const matches = useMemo(() => {
     const t = q.trim()
     if (!t) return []
-    return catalog.menuItems.filter((m) => m.active && m.course !== 'drink' && m.name.includes(t)).slice(0, 8)
-  }, [q, catalog.menuItems])
+    const cu = setCuisine(s)
+    return catalog.menuItems.filter((m) => m.active && m.course !== 'drink' && m.name.includes(t) && itemCuisine(m, catalog.categories) === cu).slice(0, 8)
+  }, [q, catalog, s])
   const alaCarte = s.items.reduce((sum, it) => sum + (catalog.menuItems.find((m) => m.id === it.menuItemId)?.price ?? 0), 0)
   const unpriced = s.items.filter((it) => !(catalog.menuItems.find((m) => m.id === it.menuItemId)?.price)).length
   const move = (i: number, d: number) => setS((x) => {
@@ -88,6 +100,11 @@ function SetEditor({ value, onClose, onSave, onDelete }: {
         <button className="btn primary grow" disabled={!s.name.trim() || s.items.length === 0} onClick={() => void onSave(s)}>บันทึกเซ็ต</button>
       </div>}>
       <Field label="ชื่อเซ็ต" required><input className="input" value={s.name} onChange={(e) => set('name', e.target.value)} /></Field>
+      <Field label="สไตล์เซ็ต" hint="เซ็ตจะแสดงในแท็บ “เซ็ตเมนูจีน” หรือ “เซ็ตเมนูไทย” ของ Sales">
+        <div className="chips">
+          {CUISINES.map((k) => <button key={k} type="button" className={`chip small${setCuisine(s) === k ? ' on' : ''}`} onClick={() => set('cuisine', k)}>อาหาร{CUISINE_LABEL[k]}</button>)}
+        </div>
+      </Field>
       <div className="grid2">
         <Field label="ราคาต่อโต๊ะ (บาท)"><input className="input num" inputMode="decimal" value={s.pricePerTable} onChange={(e) => set('pricePerTable', Number(e.target.value) || 0)} /></Field>
         <Field label="ขนาดเสิร์ฟ">
@@ -95,6 +112,7 @@ function SetEditor({ value, onClose, onSave, onDelete }: {
             <button type="button" className={`chip small${s.servingSize === 'large' ? ' on' : ''}`} onClick={() => setS({ ...s, servingSize: 'large', seats: '10–12 ที่' })}>จานใหญ่ 10–12 ที่</button>
             <button type="button" className={`chip small${s.servingSize === 'medium' ? ' on' : ''}`} onClick={() => setS({ ...s, servingSize: 'medium', seats: '5–6 ที่' })}>จานกลาง 5–6 ที่</button>
           </div>
+          <input className="input" style={{ marginTop: 6 }} placeholder="จำนวนที่นั่ง เช่น 10 ที่" value={s.seats} onChange={(e) => set('seats', e.target.value)} aria-label="จำนวนที่นั่ง" />
         </Field>
       </div>
 
@@ -124,7 +142,10 @@ function SetEditor({ value, onClose, onSave, onDelete }: {
             </div>
           ))}
           {q.trim() && matches.length === 0 && (
-            <div className="small muted">ไม่พบเมนู — เพิ่มเป็น “เมนูเฉพาะเซ็ต” ได้ที่หน้าเมนูอาหาร</div>
+            <div className="row wrap small">
+              <span className="muted">ไม่พบในเมนู{CUISINE_LABEL[setCuisine(s)]}</span>
+              <button className="btn small" onClick={() => { set('items', [...s.items, { course: guessCourse(q.trim()), name: q.trim() }]); setQ('') }}>+ ใส่ “{q.trim()}” เป็นชื่ออาหารในเซ็ต</button>
+            </div>
           )}
           <div className="notice info small">
             มูลค่าเมนูเดี่ยวรวม {num(alaCarte)} บาท{unpriced ? ` (ไม่นับ ${unpriced} เมนูที่ไม่มีราคาเดี่ยว)` : ''} · ราคาเซ็ต {num(s.pricePerTable)} บาท

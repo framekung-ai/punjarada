@@ -2,7 +2,7 @@
 
 export type CourseId =
   | 'appetizer' | 'yum' | 'main' | 'fish' | 'shrimp' | 'crab'
-  | 'veg' | 'soup' | 'noodle' | 'rice' | 'dessert' | 'drink'
+  | 'veg' | 'soup' | 'noodle' | 'rice' | 'dessert' | 'drink' | 'chili'
 
 export const COURSE_LABEL: Record<CourseId, string> = {
   appetizer: 'ทานเล่น / ออเดิร์ฟ',
@@ -17,13 +17,27 @@ export const COURSE_LABEL: Record<CourseId, string> = {
   rice: 'ข้าว',
   dessert: 'ของหวาน / ผลไม้',
   drink: 'เครื่องดื่ม',
+  chili: 'น้ำพริก / หลน',
 }
+
+/**
+ * Cooking style. The same dish name can exist in both styles with a different recipe and price
+ * (e.g. ยำวุ้นเส้น จีน / ไทย). Stored on Category and MenuSet; a menu item takes the style of
+ * its category. Records saved before this field existed have none and count as 'cn' (จีน).
+ */
+export type Cuisine = 'cn' | 'th'
+export const CUISINES: Cuisine[] = ['cn', 'th']
+export const CUISINE_LABEL: Record<Cuisine, string> = { cn: 'จีน', th: 'ไทย' }
 
 export interface Category {
   id: string
   name: string
   sort: number
   active: boolean
+  /** สไตล์อาหารของหมวด (ไม่มี = จีน) — เมนูในหมวดนี้เป็นสไตล์นี้ทั้งหมด */
+  cuisine?: Cuisine
+  /** ประเภทจานเริ่มต้นของเมนูที่เพิ่มในหมวดนี้ (ใช้เช็กความครบของมื้อ) */
+  course?: CourseId
 }
 
 export type PriceType = 'fixed' | 'perWeight' | 'byOption'
@@ -76,6 +90,8 @@ export interface MenuSet {
   note: string
   active: boolean
   sort: number
+  /** สไตล์ของเซ็ต (ไม่มี = จีน) */
+  cuisine?: Cuisine
 }
 
 export interface Service {
@@ -179,6 +195,8 @@ export interface BeoLine {
   unitPrice: number
   course?: CourseId
   setItems?: string[]
+  /** สไตล์อาหาร (set / item / addon) — ใช้เติม (ไทย) / (จีน) ท้ายชื่อเมื่อเลือกข้ามสไตล์ */
+  cuisine?: Cuisine
   /** FOC only */
   focRuleId?: string
   focKey?: string

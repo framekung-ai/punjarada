@@ -1,6 +1,7 @@
 import { forwardRef } from 'react'
 import type { Beo, BeoLine, Settings } from '../lib/types'
 import { lineAmount } from '../lib/pricing'
+import { lineName } from '../lib/cuisine'
 import { bahtText, money, num, phoneFormat, thaiDate, timeRange, todayIso } from '../lib/thai'
 import './beo-document.css'
 
@@ -43,7 +44,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
       <tr key={l.key}>
         <td className="c">{no}</td>
         <td>
-          <div className="bd-item">{l.name}{l.kind === 'addon' && <span className="bd-tag">สิทธิแลกซื้อ</span>}</div>
+          <div className="bd-item">{lineName(l, beo.lines)}{l.kind === 'addon' && <span className="bd-tag">สิทธิแลกซื้อ</span>}</div>
           {l.detail && <div className="bd-sub">{l.detail}</div>}
           {l.setItems && l.setItems.length > 0 && (
             <ol className="bd-setlist">{l.setItems.map((n, i) => <li key={i}>{n}</li>)}</ol>

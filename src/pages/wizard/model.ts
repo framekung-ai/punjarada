@@ -1,5 +1,6 @@
-import type { AppUser, Beo, BeoLine, Catalog, MealTemplate, MenuItem, MenuSet, Service } from '../../lib/types'
+import type { AppUser, Beo, BeoLine, Catalog, Cuisine, MealTemplate, MenuItem, MenuSet, Service } from '../../lib/types'
 import { newKey } from '../../lib/pricing'
+import { mainCuisine, setCuisine, THAI_TEMPLATE } from '../../lib/cuisine'
 
 export const STEPS = ['ประเภทงาน', 'ลูกค้า', 'รายละเอียดงาน', 'แขกและโต๊ะ', 'อาหารและบริการ', 'สรุปและยืนยัน'] as const
 
@@ -55,10 +56,12 @@ export function validateStep(step: number, b: Beo): StepErrors {
   return e
 }
 
-export function templateFor(catalog: Catalog, layout: string): MealTemplate {
+/** meal checklist: plated layout → 'plated'; mostly Thai food → 'thai'; otherwise Chinese banquet */
+export function templateFor(catalog: Catalog, layout: string, lines: BeoLine[] = []): MealTemplate {
   const t = catalog.settings.mealTemplates
-  const plated = layout.includes('ใส่จาน')
-  return (plated ? t.find((x) => x.id === 'plated') : t.find((x) => x.id === 'chinese')) ?? t[0]
+  if (layout.includes('ใส่จาน')) return t.find((x) => x.id === 'plated') ?? t[0]
+  if (mainCuisine(lines) === 'th') return t.find((x) => x.id === 'thai') ?? THAI_TEMPLATE
+  return t.find((x) => x.id === 'chinese') ?? t[0]
 }
 
 export function defaultQty(b: Beo): number {
@@ -67,16 +70,16 @@ export function defaultQty(b: Beo): number {
 
 export function setLine(s: MenuSet, qty: number): BeoLine {
   return {
-    key: newKey(), kind: 'set', refId: s.id, name: s.name, qty, unit: 'โต๊ะ', unitPrice: s.pricePerTable,
+    key: newKey(), kind: 'set', refId: s.id, name: s.name, qty, unit: 'โต๊ะ', unitPrice: s.pricePerTable, cuisine: setCuisine(s),
     detail: [s.seats && `เสิร์ฟ ${s.seats}`, s.drinksText && `เครื่องดื่ม: ${s.drinksText}`].filter(Boolean).join(' · '),
     setItems: s.items.map((i) => i.name),
   }
 }
 
-export function itemLine(m: MenuItem, qty: number, opt?: { variant?: string; option?: { label: string; price: number } }): BeoLine {
+export function itemLine(m: MenuItem, qty: number, opt?: { variant?: string; option?: { label: string; price: number } }, cuisine: Cuisine = 'cn'): BeoLine {
   const name = opt?.variant ? `${m.name}${opt.variant}` : m.name
   return {
-    key: newKey(), kind: 'item', refId: m.id, name, qty,
+    key: newKey(), kind: 'item', refId: m.id, name, qty, cuisine,
     unit: m.unit, unitPrice: opt?.option?.price ?? m.price, course: m.course,
     detail: [opt?.option?.label, m.priceType === 'perWeight' ? `ราคาขีดละ ${m.price} บาท` : ''].filter(Boolean).join(' · ') || undefined,
   }
@@ -89,9 +92,9 @@ export function serviceLine(s: Service, qty = 1, price?: number): BeoLine {
   }
 }
 
-export function addonLine(offer: { menuItemId: string; name: string; specialPrice: number }, course?: BeoLine['course']): BeoLine {
+export function addonLine(offer: { menuItemId: string; name: string; specialPrice: number }, course?: BeoLine['course'], cuisine: Cuisine = 'cn'): BeoLine {
   return {
     key: newKey(), kind: 'addon', refId: offer.menuItemId, name: offer.name, qty: 1, unit: 'จาน',
-    unitPrice: offer.specialPrice, course,
+    unitPrice: offer.specialPrice, course, cuisine,
   }
 }

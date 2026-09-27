@@ -92,12 +92,12 @@ export function StepCustomer({ beo, setBeo, errors, onRegular }: StepProps & { o
   return (
     <div className="stack">
       <h2>ข้อมูลลูกค้า</h2>
-      <Field label="เบอร์โทรศัพท์" required error={errors.phone} hint="ใส่เฉพาะตัวเลข ไม่ต้องใส่ขีด (-) เช่น 0812345678 — กรอกเบอร์ก่อน ระบบจะดึงข้อมูลลูกค้าเดิมให้">
+      <Field label="เบอร์โทรศัพท์" required error={errors.phone} hint="ใส่เฉพาะตัวเลข (เช่น 0630388996)">
         <input className={`input${errors.phone ? ' invalid' : ''}`} inputMode="numeric" autoComplete="off" value={c.phone}
-          placeholder="0812345678" onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} onBlur={() => void lookup()} />
+          onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} onBlur={() => void lookup()} />
       </Field>
-      <Field label="ชื่อลูกค้า" required error={errors.name}>
-        <input className={`input${errors.name ? ' invalid' : ''}`} value={c.name} placeholder="เช่น คุณรุ่งโรจน์" onChange={(e) => set('name', e.target.value)} />
+      <Field label="ชื่อลูกค้า" required error={errors.name} hint="กรอกชื่อ-สกุล ของลูกค้า (เช่น คุณไพบูลย์เกียรติ เขียวแก้ว)">
+        <input className={`input${errors.name ? ' invalid' : ''}`} value={c.name} onChange={(e) => set('name', e.target.value)} />
       </Field>
       <Field label="หน่วยงาน / บริษัท">
         <input className="input" value={c.organization} onChange={(e) => set('organization', e.target.value)} />

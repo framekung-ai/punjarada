@@ -1,7 +1,7 @@
 // Pricing, FOC and meal-balance logic. Pure functions — no Firebase here,
 // so the same code can run in the browser, in tests, and later in Cloud Functions.
 import type {
-  Beo, BeoLine, BeoTotals, Catalog, CourseId, FocCondition, FocRule, MealSlot, MenuItem,
+  Beo, BeoLine, BeoTotals, Catalog, CourseId, Cuisine, FocCondition, FocRule, MealSlot, MenuItem,
 } from './types'
 
 const toSatang = (b: number) => Math.round((Number(b) || 0) * 100)
@@ -229,9 +229,13 @@ export function checkBalance(lines: BeoLine[], catalog: Pick<Catalog, 'menuSets'
 export function suggestFor(
   slot: MealSlot,
   lines: BeoLine[],
-  catalog: Pick<Catalog, 'menuItems'>,
+  catalog: Pick<Catalog, 'menuItems'> & Partial<Pick<Catalog, 'categories'>>,
   n = 3,
+  /** only suggest dishes of this style (Thai BEO → Thai dishes) */
+  cuisine?: Cuisine,
 ): MenuItem[] {
+  const styleOk = (m: MenuItem) => !cuisine || !catalog.categories
+    || (catalog.categories.find((c) => c.id === m.categoryId)?.cuisine ?? 'cn') === cuisine
   const usedIds = new Set(lines.map((l) => l.refId))
   const chosen = catalog.menuItems.filter((m) => usedIds.has(m.id) && m.course !== 'drink')
   const allVeg = chosen.length > 0 && chosen.every((m) => m.tags.includes('เจ'))
@@ -239,7 +243,7 @@ export function suggestFor(
   const priced = chosen.filter((m) => m.price > 0)
   const avg = priced.length ? priced.reduce((s, m) => s + m.price, 0) / priced.length : 450
   return catalog.menuItems
-    .filter((m) => m.active && !m.setOnly && slot.courses.includes(m.course) && !usedIds.has(m.id))
+    .filter((m) => m.active && !m.setOnly && slot.courses.includes(m.course) && !usedIds.has(m.id) && styleOk(m))
     .filter((m) => (allVeg ? m.tags.includes('เจ') : !m.tags.includes('เจ')))
     .map((m) => {
       let score = Math.abs(m.price - avg)

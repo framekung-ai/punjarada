@@ -1,45 +1,26 @@
 import { useState } from 'react'
 import seed from '../../seed/seed.json'
-import type { Catalog, MenuItem } from '../../lib/types'
+import thaiMenuCsv from '../../../data/import-menu-thai.csv?raw'
+import thaiSetsCsv from '../../../data/import-sets-thai.csv?raw'
+import type { Catalog, Cuisine } from '../../lib/types'
+import { CUISINE_LABEL, CUISINES } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
-import { clearCatalogCache, newId, saveCatalogDoc, seedCatalog } from '../../lib/db'
+import { catCuisine, setCuisine } from '../../lib/cuisine'
+import { clearCatalogCache, newId, saveCatalogDocs, saveSettings, seedCatalog } from '../../lib/db'
+import {
+  detectKind, exportMenuCsv, exportSetsCsv, parseCsv, parseMenuRows, parseSetRows, planImport, planSize,
+  type ImportPlan, type MenuRow, type SetRow,
+} from '../../lib/menuCsv'
 import { num } from '../../lib/thai'
-import { errorText, useToast , useConfirm } from '../../components/ui'
+import { errorText, useConfirm, useToast } from '../../components/ui'
 
 const seedData = seed as unknown as Omit<Catalog, 'version'> & { importNotes: string[] }
 
-/** Map from the "ประเภท" column of the hotel CSV to our category ids */
-const FILE_CAT: Record<string, string> = {
-  'ออเดิร์ฟ': 'appetizer', 'ปลา': 'fish', 'ผัก': 'veg', 'ยำ': 'yum', 'ซุป': 'soup', 'กุ้ง': 'shrimp', 'ปู': 'crab',
-  'ของหวาน': 'dessert', 'เครื่องดื่ม': 'drink', 'ข้าวราด': 'rice', 'อาหารเจ': 'veg', 'เมนูแนะนำ': 'main',
-}
-
-interface CsvRow { name: string; type: string; price: string }
-type Change = { kind: 'price'; item: MenuItem; price: number } | { kind: 'new'; row: CsvRow; price: number }
-
-function parseCsv(text: string): CsvRow[] {
-  const rows: string[][] = []
-  let cur: string[] = []
-  let field = ''
-  let q = false
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]
-    if (q) {
-      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++ } else if (ch === '"') q = false
-      else field += ch
-    } else if (ch === '"') q = true
-    else if (ch === ',') { cur.push(field); field = '' }
-    else if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && text[i + 1] === '\n') i++
-      cur.push(field); rows.push(cur); cur = []; field = ''
-    } else field += ch
-  }
-  if (field || cur.length) { cur.push(field); rows.push(cur) }
-  const [head, ...body] = rows.filter((r) => r.some((c) => c.trim()))
-  const idx = (n: string) => head.findIndex((h) => h.replace(/^﻿/, '').trim().startsWith(n))
-  const iName = idx('รายการ'), iType = idx('ประเภท'), iPrice = idx('ราคา')
-  if (iName < 0 || iPrice < 0) throw new Error('ไฟล์ต้องมีคอลัมน์ “รายการ” และ “ราคา”')
-  return body.map((r) => ({ name: (r[iName] ?? '').trim(), type: (r[iType] ?? '').trim(), price: (r[iPrice] ?? '').trim() })).filter((r) => r.name)
+function download(name: string, text: string) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }))
+  a.download = name
+  a.click()
 }
 
 export function SetupAdmin() {
@@ -47,9 +28,9 @@ export function SetupAdmin() {
   const toast = useToast()
   const confirm = useConfirm()
   const [busy, setBusy] = useState<string | null>(null)
-  const [changes, setChanges] = useState<Change[] | null>(null)
-  const [skipped, setSkipped] = useState<string[]>([])
-
+  const [plan, setPlan] = useState<ImportPlan | null>(null)
+  const [source, setSource] = useState('')
+  const [fallback, setFallback] = useState<Cuisine>('cn')
   const install = async () => {
     if (!empty && !(await confirm({ title: 'ติดตั้งข้อมูลเริ่มต้นซ้ำ?', message: 'เมนู เซ็ต บริการ กฎ FOC และการตั้งค่าที่แก้ไว้ จะถูกเขียนทับด้วยข้อมูลเริ่มต้น', confirmText: 'เขียนทับ', danger: true, requireText: 'ยืนยัน' }))) return
     setBusy('install')
@@ -61,57 +42,52 @@ export function SetupAdmin() {
     } catch (e) { toast(errorText(e)) } finally { setBusy(null) }
   }
 
-  const onFile = async (f: File) => {
+  /** read one or more CSV texts (menu and/or set files) and show what would change */
+  const preview = (files: { name: string; text: string }[], label: string) => {
+    if (!catalog) return
     try {
-      const rows = parseCsv(await f.text())
-      const items = catalog?.menuItems ?? []
-      const norm = (s: string) => s.replace(/\s+/g, '')
-      const out: Change[] = []
-      const skip: string[] = []
-      const seen = new Set<string>()
-      for (const r of rows) {
-        const key = norm(r.name)
-        if (seen.has(key)) continue
-        seen.add(key)
-        if (!/^\d+(\.\d+)?$/.test(r.price)) { skip.push(`${r.name} (ราคา “${r.price}”)`); continue }
-        const price = Number(r.price)
-        const hit = items.find((m) => norm(m.name) === key || norm(m.name + m.variants.join('/')) === key.replace(/\//g, '/'))
-        if (hit) { if (hit.price !== price) out.push({ kind: 'price', item: hit, price }) }
-        else out.push({ kind: 'new', row: r, price })
+      const menu: MenuRow[] = []
+      const sets: SetRow[] = []
+      const skipped: string[] = []
+      for (const f of files) {
+        const rows = parseCsv(f.text)
+        const kind = detectKind(rows)
+        if (kind === 'menu') { const r = parseMenuRows(rows, fallback); menu.push(...r.rows); skipped.push(...r.skipped) }
+        else if (kind === 'sets') { const r = parseSetRows(rows, fallback); sets.push(...r.rows); skipped.push(...r.skipped) }
+        else throw new Error(`${f.name}: ไม่รู้จักรูปแบบไฟล์ — ต้องมีคอลัมน์ “รายการ, ราคา” (เมนู) หรือ “ชุด, รายการอาหาร” (เซ็ต)`)
       }
-      setChanges(out)
-      setSkipped(skip)
+      setPlan(planImport(catalog, { menu, sets, skipped }, (k) => newId(k)))
+      setSource(label)
     } catch (e) { toast(errorText(e)) }
   }
 
+  const onFiles = async (list: FileList | null) => {
+    if (!list?.length) return
+    const files = await Promise.all([...list].map(async (f) => ({ name: f.name, text: await f.text() })))
+    preview(files, files.map((f) => f.name).join(', '))
+  }
+
   const apply = async () => {
-    if (!changes) return
+    if (!plan || !catalog) return
     setBusy('apply')
     try {
-      for (const c of changes) {
-        if (c.kind === 'price') await saveCatalogDoc('menuItems', c.item.id, { ...c.item, price: c.price })
-        else {
-          const cat = FILE_CAT[c.row.type] ?? 'main'
-          const m: Omit<MenuItem, 'id'> = { name: c.row.name, categoryId: cat, course: (cat === 'shrimp' || cat === 'crab' ? 'main' : cat) as MenuItem['course'], tags: c.row.type === 'อาหารเจ' ? ['เจ'] : [], variants: [], priceType: 'fixed', price: c.price, unit: 'จาน', setOnly: false, active: true, sort: 9000, needsReview: 'เพิ่มจาก CSV — ตรวจหมวด/ประเภทจาน' }
-          await saveCatalogDoc('menuItems', newId('menuItems'), m)
-        }
-      }
+      const ops = [
+        ...plan.categories.map((c) => ({ name: 'categories' as const, id: c.id, data: c })),
+        ...[...plan.newItems, ...plan.updatedItems].map((x) => ({ name: 'menuItems' as const, id: x.item.id, data: x.item })),
+        ...[...plan.newSets, ...plan.updatedSets].map((x) => ({ name: 'menuSets' as const, id: x.set.id, data: x.set })),
+      ]
+      await saveCatalogDocs(ops)
+      if (plan.addThaiTemplate) await saveSettings({ ...catalog.settings, mealTemplates: [...catalog.settings.mealTemplates, plan.addThaiTemplate] })
       await reload(true)
-      toast(`อัปเดต ${changes.length} รายการแล้ว`)
-      setChanges(null)
+      toast(`บันทึก ${planSize(plan)} รายการแล้ว`)
+      setPlan(null)
     } catch (e) { toast(errorText(e)) } finally { setBusy(null) }
   }
 
-  const exportCsv = () => {
-    if (!catalog) return
-    const cat = (id: string) => catalog.categories.find((c) => c.id === id)?.name ?? id
-    const rows = [['รายการ', 'ประเภท', 'ราคา (บาท)'], ...catalog.menuItems.filter((m) => !m.setOnly).map((m) => [m.variants.length ? `${m.name}${m.variants.join(' / ')}` : m.name, cat(m.categoryId), m.priceType === 'perWeight' ? `ขีดละ ${m.price}` : String(m.price)])]
-    const csv = '﻿' + rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n')
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
-    a.download = 'เมนูปัญจดารา.csv'
-    a.click()
-  }
+  const thaiCount = catalog ? {
+    items: catalog.menuItems.filter((m) => catCuisine(catalog.categories.find((c) => c.id === m.categoryId)) === 'th').length,
+    sets: catalog.menuSets.filter((x) => setCuisine(x) === 'th').length,
+  } : { items: 0, sets: 0 }
 
   return (
     <div className="stack">
@@ -139,36 +115,126 @@ export function SetupAdmin() {
         <div className="small muted">ใช้การเขียนประมาณ {seedData.menuItems.length + 30} ครั้ง ครั้งเดียว (โควตาฟรี 20,000 ครั้ง/วัน)</div>
       </section>
 
-      {!empty && (
+      {!empty && catalog && (
         <section className="card stack">
-          <h2>2. อัปเดตราคาจากไฟล์ CSV</h2>
-          <div className="small muted">ใช้ไฟล์รูปแบบเดียวกับ “อาหารปัญจดารา - อาหาร.csv” (คอลัมน์ รายการ, ประเภท, ราคา) — ระบบจะแสดงรายการที่เปลี่ยนให้ตรวจก่อนบันทึก</div>
-          <input type="file" accept=".csv,text/csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) void onFile(f) }} />
-          {changes && (
-            <div className="stack">
-              {changes.length === 0 ? <div className="notice ok">ราคาตรงกับระบบทั้งหมด ไม่มีอะไรต้องเปลี่ยน</div> : (
-                <div className="table-wrap">
-                  <table className="list">
-                    <thead><tr><th>รายการ</th><th>การเปลี่ยนแปลง</th></tr></thead>
-                    <tbody>{changes.map((c, i) => (
-                      <tr key={i}>
-                        <td>{c.kind === 'price' ? c.item.name : c.row.name}</td>
-                        <td>{c.kind === 'price' ? <>ราคา {num(c.item.price)} → <strong>{num(c.price)}</strong></> : <span className="badge gold">เมนูใหม่ {num(c.price)} ({c.row.type})</span>}</td>
-                      </tr>
-                    ))}</tbody>
-                  </table>
-                </div>
-              )}
-              {skipped.length > 0 && <div className="notice warn small">ข้ามรายการที่ราคาไม่ใช่ตัวเลข: {skipped.join(', ')} — แก้ในหน้าเมนูอาหาร</div>}
-              {changes.length > 0 && <button className="btn primary" disabled={!!busy} onClick={() => void apply()}>{busy === 'apply' ? 'กำลังบันทึก…' : `บันทึก ${changes.length} รายการ`}</button>}
-            </div>
+          <h2>2. เมนูอาหารไทย</h2>
+          <div className="small">
+            เมนูเลือกเองไทยจากไฟล์ “อาหารปัญจดารา - อาหารไทย.csv” (88 เมนู, 8 หมวด) และเซ็ตเมนูไทย 9 ชุดจากภาพใน Set_Thai
+            (ชุดอาหารไทย A–F ห้องอาหารสุพรรณหงส์ 2,500 บาท/โต๊ะ และชุดอาหารไทยประชุม A–C 2,000 บาท/โต๊ะ) — เมนูจีนเดิมไม่ถูกแก้ไข
+          </div>
+          <div className="row wrap">
+            {thaiCount.items + thaiCount.sets > 0
+              ? <span className="badge ok">มีเมนูไทย {thaiCount.items} รายการ · เซ็ตไทย {thaiCount.sets} ชุด</span>
+              : <span className="badge gray">ยังไม่มีเมนูไทย</span>}
+            <button className="btn primary" disabled={!!busy} onClick={() => preview([{ name: 'import-menu-thai.csv', text: thaiMenuCsv }, { name: 'import-sets-thai.csv', text: thaiSetsCsv }], 'เมนูอาหารไทย (ไฟล์ในระบบ)')}>
+              {thaiCount.items + thaiCount.sets > 0 ? 'ตรวจ / อัปเดตเมนูไทย' : 'ติดตั้งเมนูอาหารไทย'}
+            </button>
+            <button className="btn small" onClick={() => download('นำเข้า - เมนูอาหารไทย.csv', thaiMenuCsv)}>ดาวน์โหลดไฟล์เมนูไทย</button>
+            <button className="btn small" onClick={() => download('นำเข้า - เซ็ตเมนูไทย.csv', thaiSetsCsv)}>ดาวน์โหลดไฟล์เซ็ตไทย</button>
+          </div>
+        </section>
+      )}
+
+      {!empty && catalog && (
+        <section className="card stack">
+          <h2>3. นำเข้า / อัปเดตจากไฟล์ CSV</h2>
+          <div className="small muted">
+            เลือกได้หลายไฟล์พร้อมกัน ระบบดูจากหัวตารางเองว่าเป็นไฟล์เมนูหรือไฟล์เซ็ต แล้วแสดงสิ่งที่จะเปลี่ยนให้ตรวจก่อนบันทึก
+            (เพิ่ม / แก้ไขเท่านั้น ไม่ลบเมนูที่ไม่มีในไฟล์)
+          </div>
+          <details className="small">
+            <summary style={{ cursor: 'pointer' }}>รูปแบบไฟล์</summary>
+            <ul>
+              <li><strong>เมนู:</strong> รายการ, สไตล์ (จีน/ไทย), หมวด, ราคา (บาท), หน่วย, ตัวเลือก (เช่น หมู / ไก่), แท็ก (เช่น แนะนำ, เจ)
+                — ราคาแบบขนาด ใส่ “20 / 50”, ราคาตามน้ำหนัก ใส่ “ขีดละ 400”</li>
+              <li><strong>เซ็ต:</strong> ชุด, สไตล์, ราคาต่อโต๊ะ (บาท), ที่นั่ง, เครื่องดื่ม, รายการอาหาร (คั่นด้วย | ), หมายเหตุ</li>
+              <li>ชื่อเดียวกันแต่คนละสไตล์ = คนละเมนู (เช่น ยำวุ้นเส้น จีน / ไทย) · หมวดที่ยังไม่มีจะถูกสร้างให้</li>
+              <li>ไฟล์รูปแบบเดิมของโรงแรม (รายการ, ประเภท, ราคา) ใช้ได้ — เลือกสไตล์ด้านล่าง</li>
+            </ul>
+          </details>
+          <div className="row wrap">
+            <label className="small">ไฟล์ที่ไม่มีคอลัมน์ “สไตล์” ให้ถือเป็น</label>
+            <select className="input" style={{ width: 'auto' }} value={fallback} onChange={(e) => setFallback(e.target.value as Cuisine)}>
+              {CUISINES.map((k) => <option key={k} value={k}>อาหาร{CUISINE_LABEL[k]}</option>)}
+            </select>
+          </div>
+          <input type="file" accept=".csv,text/csv" multiple onChange={(e) => { void onFiles(e.target.files); e.target.value = '' }} aria-label="เลือกไฟล์ CSV" />
+          <div className="row wrap">
+            <button className="btn small" onClick={() => download('เมนูปัญจดารา.csv', exportMenuCsv(catalog))}>ส่งออกเมนูทั้งหมด (CSV)</button>
+            <button className="btn small" onClick={() => download('เซ็ตเมนูปัญจดารา.csv', exportSetsCsv(catalog))}>ส่งออกเซ็ตเมนู (CSV)</button>
+          </div>
+        </section>
+      )}
+
+      {plan && (
+        <section className="card stack import-preview" aria-live="polite">
+          <div className="row between wrap">
+            <h2>ตรวจก่อนบันทึก</h2>
+            <span className="small muted">{source}</span>
+          </div>
+          <div className="row wrap">
+            {plan.categories.length > 0 && <span className="badge">หมวดใหม่ {plan.categories.length}</span>}
+            {plan.newItems.length > 0 && <span className="badge ok">เมนูใหม่ {plan.newItems.length}</span>}
+            {plan.updatedItems.length > 0 && <span className="badge gold">แก้ไขเมนู {plan.updatedItems.length}</span>}
+            {plan.newSets.length > 0 && <span className="badge ok">เซ็ตใหม่ {plan.newSets.length}</span>}
+            {plan.updatedSets.length > 0 && <span className="badge gold">แก้ไขเซ็ต {plan.updatedSets.length}</span>}
+            {plan.unchanged > 0 && <span className="badge gray">ตรงกับระบบแล้ว {plan.unchanged}</span>}
+            {plan.addThaiTemplate && <span className="badge">+ โครงมื้ออาหารไทย</span>}
+          </div>
+          {planSize(plan) === 0 && <div className="notice ok">ข้อมูลตรงกับระบบทั้งหมด ไม่มีอะไรต้องเปลี่ยน</div>}
+          {plan.categories.length > 0 && (
+            <details open><summary>หมวดใหม่ ({plan.categories.length})</summary>
+              <div className="chips" style={{ marginTop: 6 }}>{plan.categories.map((c) => <span key={c.id} className="chip small">{c.name} · {CUISINE_LABEL[catCuisine(c)]}</span>)}</div>
+            </details>
           )}
-          <button className="btn small" onClick={exportCsv}>ส่งออกเมนูปัจจุบันเป็น CSV</button>
+          {plan.newItems.length > 0 && (
+            <details><summary>เมนูใหม่ ({plan.newItems.length})</summary>
+              <div className="table-wrap" style={{ marginTop: 6 }}>
+                <table className="list">
+                  <thead><tr><th>เมนู</th><th>หมวด</th><th className="num">ราคา</th></tr></thead>
+                  <tbody>{plan.newItems.map(({ item }) => {
+                    const c = [...catalog!.categories, ...plan.categories].find((x) => x.id === item.categoryId)
+                    return (
+                      <tr key={item.id}>
+                        <td>{item.name}{item.variants.length > 0 && <span className="muted"> ({item.variants.join('/')})</span>}</td>
+                        <td className="small"><span className={`badge style-${catCuisine(c)}`}>{CUISINE_LABEL[catCuisine(c)]}</span> {c?.name}</td>
+                        <td className="num">{item.options?.length ? item.options.map((o) => num(o.price)).join(' / ') : num(item.price)}</td>
+                      </tr>
+                    )
+                  })}</tbody>
+                </table>
+              </div>
+            </details>
+          )}
+          {plan.updatedItems.length > 0 && (
+            <details open><summary>แก้ไขเมนู ({plan.updatedItems.length})</summary>
+              <ul className="small">{plan.updatedItems.map(({ item, changes }) => <li key={item.id}><strong>{item.name}</strong> — {changes.join(', ')}</li>)}</ul>
+            </details>
+          )}
+          {[...plan.newSets, ...plan.updatedSets].length > 0 && (
+            <details open><summary>เซ็ตเมนู ({plan.newSets.length + plan.updatedSets.length})</summary>
+              <div className="menu-list" style={{ marginTop: 6 }}>
+                {[...plan.newSets, ...plan.updatedSets].map(({ set, before, changes }) => (
+                  <div key={set.id} className="set-card">
+                    <div className="row between"><strong>{set.name}</strong><span className={`badge ${before ? 'gold' : 'ok'}`}>{before ? `แก้ไข: ${changes.join(', ')}` : 'ใหม่'}</span></div>
+                    <div className="price num">{num(set.pricePerTable)} <span className="small muted">บาท / โต๊ะ{set.seats ? ` · ${set.seats}` : ''} · {CUISINE_LABEL[setCuisine(set)]}</span></div>
+                    <div className="small muted">{set.items.map((i) => i.name).join(' · ')}</div>
+                    {set.drinksText && <div className="small">เครื่องดื่ม: {set.drinksText}</div>}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+          {plan.skipped.length > 0 && <div className="notice warn small">ข้าม {plan.skipped.length} แถว: {plan.skipped.join(', ')}</div>}
+          <div className="row">
+            <button className="btn" onClick={() => setPlan(null)}>ยกเลิก</button>
+            {planSize(plan) > 0 && <button className="btn primary grow" disabled={!!busy} onClick={() => void apply()}>{busy === 'apply' ? 'กำลังบันทึก…' : `บันทึก ${planSize(plan)} รายการ`}</button>}
+          </div>
         </section>
       )}
 
       <section className="card stack">
-        <h2>3. แคชข้อมูลในเครื่องนี้</h2>
+        <h2>4. แคชข้อมูลในเครื่องนี้</h2>
         <div className="small muted">แอปเก็บเมนูไว้ในเครื่องเพื่อประหยัดโควตา และจะโหลดใหม่เองเมื่อ Admin แก้ไขข้อมูล กดปุ่มนี้เมื่อข้อมูลดูไม่ตรง</div>
         <button className="btn small" onClick={() => { clearCatalogCache(); void reload(true).then(() => toast('โหลดข้อมูลใหม่แล้ว')) }}>ล้างแคชและโหลดใหม่</button>
       </section>

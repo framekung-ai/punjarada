@@ -67,7 +67,10 @@ function Dashboard() {
     const revenue = live.reduce((s, b) => s + b.totals.grandTotal, 0)
     const counts = new Map<string, number>()
     for (const b of live) for (const l of b.lines) {
-      if (l.kind === 'set' || l.kind === 'item') counts.set(l.name, (counts.get(l.name) ?? 0) + 1)
+      if (l.kind === 'set' || l.kind === 'item') {
+        const k = l.cuisine === 'th' && !l.name.includes('ไทย') ? `${l.name} (ไทย)` : l.name
+        counts.set(k, (counts.get(k) ?? 0) + 1)
+      }
     }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
     return {

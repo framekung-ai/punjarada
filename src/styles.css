@@ -319,3 +319,19 @@ html { scroll-padding-top: 130px; scroll-padding-bottom: 96px; }
 .edited-by { font-size: .85rem; color: var(--ink-2); }
 .rev-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 12px; }
 .rev-item .who { font-weight: 700; }
+
+/* ---------- Thai / Chinese style ---------- */
+.badge.style-cn { background: #fdecec; color: #a3261f; }
+.badge.style-th { background: #e8f5ec; color: #1f7a3d; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: #eef1f5; border-radius: 12px; align-self: flex-start; max-width: 100%; }
+.seg button {
+  border: 0; background: transparent; padding: 8px 14px; border-radius: 9px; font: inherit; font-weight: 600; color: var(--ink-2);
+  cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 40px;
+}
+.seg button.on { background: #fff; color: var(--brand-dark); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.seg button .n { font-size: .75rem; background: #dfe4ea; color: var(--ink-2); border-radius: 999px; padding: 1px 7px; }
+.seg button.on .n { background: var(--brand-soft); color: var(--brand-dark); }
+.seg button:focus-visible { outline: 2px solid var(--brand); outline-offset: 1px; }
+.food-tabs .chip { white-space: nowrap; }
+.import-preview { border: 2px solid var(--brand-soft); }
+.import-preview summary { cursor: pointer; font-weight: 600; }

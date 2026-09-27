@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
-import type { Category, CourseId, MenuItem, Service } from '../../lib/types'
-import { COURSE_LABEL } from '../../lib/types'
+import type { Category, CourseId, Cuisine, MenuItem, Service } from '../../lib/types'
+import { COURSE_LABEL, CUISINE_LABEL, CUISINES } from '../../lib/types'
+import { catCourse, catCuisine } from '../../lib/cuisine'
+import { courseForItem } from '../../lib/menuCsv'
 import { useCatalog, useReadyCatalog } from '../../lib/catalog'
 import { deleteCatalogDoc, newId, saveCatalogDoc } from '../../lib/db'
 import { num } from '../../lib/thai'
@@ -37,8 +39,8 @@ export function TagsInput({ value, onChange, placeholder }: { value: string[]; o
 
 // ---------------- Menu items ----------------
 
-const blankItem = (categoryId: string): MenuItem => ({
-  id: '', name: '', categoryId, course: 'main', tags: [], variants: [], priceType: 'fixed', price: 0, unit: 'จาน',
+const blankItem = (categoryId: string, course: CourseId = 'main'): MenuItem => ({
+  id: '', name: '', categoryId, course, tags: [], variants: [], priceType: 'fixed', price: 0, unit: 'จาน',
   setOnly: false, active: true, sort: 9999,
 })
 
@@ -47,14 +49,23 @@ export function MenuAdmin() {
   const save = useSaver()
   const confirm = useConfirm()
   const [q, setQ] = useState('')
+  const [style, setStyle] = useState<Cuisine | 'all'>('all')
   const [cat, setCat] = useState('all')
   const [edit, setEdit] = useState<MenuItem | null>(null)
   const [prices, setPrices] = useState<Record<string, string>>({})
-  const catName = (id: string) => catalog.categories.find((c) => c.id === id)?.name ?? id
+  const catOf = (id: string) => catalog.categories.find((c) => c.id === id)
+  const catName = (id: string) => catOf(id)?.name ?? id
+  const styleOf = (m: MenuItem) => catCuisine(catOf(m.categoryId))
+  const styleCats = catalog.categories.filter((c) => style === 'all' || catCuisine(c) === style)
   const list = useMemo(() => catalog.menuItems.filter((m) =>
-    (cat === 'all' || (cat === 'review' ? !!m.needsReview : cat === 'setOnly' ? m.setOnly : m.categoryId === cat))
-    && (!q.trim() || m.name.includes(q.trim()))), [catalog.menuItems, cat, q])
-  const reviewCount = catalog.menuItems.filter((m) => m.needsReview).length
+    (style === 'all' || catCuisine(catalog.categories.find((c) => c.id === m.categoryId)) === style)
+    && (cat === 'all' || (cat === 'review' ? !!m.needsReview : cat === 'setOnly' ? m.setOnly : m.categoryId === cat))
+    && (!q.trim() || m.name.includes(q.trim()))), [catalog, style, cat, q])
+  const newItem = () => {
+    const c = styleCats[0] ?? catalog.categories[0]
+    setEdit(blankItem(c?.id ?? 'main', c ? catCourse(c) : 'main'))
+  }
+  const reviewCount = catalog.menuItems.filter((m) => m.needsReview && (style === 'all' || styleOf(m) === style)).length
 
   const savePrice = async (m: MenuItem) => {
     const raw = prices[m.id]
@@ -69,13 +80,21 @@ export function MenuAdmin() {
     <div className="stack">
       <div className="page-head">
         <h1>เมนูอาหาร <span className="muted small">({catalog.menuItems.length})</span></h1>
-        <button className="btn primary" onClick={() => setEdit(blankItem(catalog.categories[0]?.id ?? 'main'))}>+ เพิ่มเมนู</button>
+        <button className="btn primary" onClick={newItem}>+ เพิ่มเมนู{style !== 'all' ? CUISINE_LABEL[style] : ''}</button>
+      </div>
+      <div className="seg" role="tablist" aria-label="สไตล์อาหาร">
+        {(['all', ...CUISINES] as (Cuisine | 'all')[]).map((k) => (
+          <button key={k} role="tab" aria-selected={style === k} className={style === k ? 'on' : ''} onClick={() => { setStyle(k); setCat('all') }}>
+            {k === 'all' ? 'ทุกสไตล์' : `อาหาร${CUISINE_LABEL[k]}`}
+            <span className="n">{k === 'all' ? catalog.menuItems.length : catalog.menuItems.filter((m) => styleOf(m) === k).length}</span>
+          </button>
+        ))}
       </div>
       <input className="input" type="search" placeholder="ค้นหาเมนู" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="chips scroll">
-        <button className={`chip small${cat === 'all' ? ' on' : ''}`} onClick={() => setCat('all')}>ทั้งหมด</button>
+        <button className={`chip small${cat === 'all' ? ' on' : ''}`} onClick={() => setCat('all')}>ทุกหมวด</button>
         {reviewCount > 0 && <button className={`chip small${cat === 'review' ? ' on' : ''}`} onClick={() => setCat('review')}>⚠ ต้องตรวจสอบ ({reviewCount})</button>}
-        {catalog.categories.map((c) => <button key={c.id} className={`chip small${cat === c.id ? ' on' : ''}`} onClick={() => setCat(c.id)}>{c.name}</button>)}
+        {styleCats.map((c) => <button key={c.id} className={`chip small${cat === c.id ? ' on' : ''}`} onClick={() => setCat(c.id)}>{c.name}</button>)}
         <button className={`chip small${cat === 'setOnly' ? ' on' : ''}`} onClick={() => setCat('setOnly')}>เฉพาะเซ็ต</button>
       </div>
       {list.length === 0 ? <Empty>ไม่พบเมนู</Empty> : (
@@ -93,7 +112,7 @@ export function MenuAdmin() {
                       {m.needsReview && <span className="badge danger" title={m.needsReview}>⚠ {m.needsReview}</span>}
                     </div>
                   </td>
-                  <td className="hide-mobile small">{catName(m.categoryId)}<div className="muted">{COURSE_LABEL[m.course]}</div></td>
+                  <td className="hide-mobile small"><span className={`badge style-${styleOf(m)}`}>{CUISINE_LABEL[styleOf(m)]}</span> {catName(m.categoryId)}<div className="muted">{COURSE_LABEL[m.course]}</div></td>
                   <td className="num">
                     <input className="inline-input" inputMode="decimal" value={prices[m.id] ?? String(m.price)}
                       onChange={(e) => setPrices((s) => ({ ...s, [m.id]: e.target.value }))}
@@ -139,9 +158,17 @@ function MenuItemSheet({ item, onClose, onSave, onDelete }: {
       <Field label="ชื่อเมนู" required><input className="input" value={m.name} onChange={(e) => set('name', e.target.value)} /></Field>
       {m.needsReview && <div className="notice warn">{m.needsReview} — กดบันทึกเพื่อยืนยันว่าตรวจแล้ว</div>}
       <div className="grid2">
-        <Field label="หมวด (แท็บที่ Sales เห็น)">
-          <select className="input" value={m.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
-            {catalog.categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <Field label="หมวด (กำหนดสไตล์ จีน / ไทย)" hint={`สไตล์: อาหาร${CUISINE_LABEL[catCuisine(catalog.categories.find((c) => c.id === m.categoryId))]}`}>
+          <select className="input" value={m.categoryId} onChange={(e) => {
+            const c = catalog.categories.find((x) => x.id === e.target.value)
+            // new dish: follow the category's default dish type
+            setM({ ...m, categoryId: e.target.value, ...(!m.id && c ? { course: courseForItem(m.name, catCourse(c)) } : {}) })
+          }}>
+            {CUISINES.map((cu) => (
+              <optgroup key={cu} label={`อาหาร${CUISINE_LABEL[cu]}`}>
+                {catalog.categories.filter((c) => catCuisine(c) === cu).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </optgroup>
+            ))}
           </select>
         </Field>
         <Field label="ประเภทจาน (ใช้เช็กความครบของมื้อ)">
@@ -188,10 +215,11 @@ export function CategoriesAdmin() {
   const save = useSaver()
   const confirm = useConfirm()
   const [name, setName] = useState('')
+  const [newStyle, setNewStyle] = useState<Cuisine>('th')
+  const [newCourse, setNewCourse] = useState<CourseId>('main')
   const cats = catalog.categories
   const count = (id: string) => catalog.menuItems.filter((m) => m.categoryId === id).length
-  const swap = async (i: number, j: number) => {
-    const a = cats[i], b = cats[j]
+  const swap = async (a: Category, b: Category) => {
     await save(async () => {
       await saveCatalogDoc('categories', a.id, { ...a, sort: b.sort })
       await saveCatalogDoc('categories', b.id, { ...b, sort: a.sort })
@@ -200,30 +228,71 @@ export function CategoriesAdmin() {
   return (
     <div className="stack">
       <h1>หมวดหมู่อาหาร</h1>
-      <div className="small muted">ลำดับที่นี่ = ลำดับแท็บที่ Sales เห็น</div>
-      <div className="table-wrap">
-        <table className="list">
-          <thead><tr><th>ลำดับ</th><th>ชื่อหมวด</th><th className="num">เมนู</th><th>แสดง</th><th></th></tr></thead>
-          <tbody>
-            {cats.map((c: Category, i) => (
-              <tr key={c.id}>
-                <td><div className="row" style={{ gap: 4 }}><button className="icon-btn" disabled={i === 0} onClick={() => void swap(i, i - 1)}>▲</button><button className="icon-btn" disabled={i === cats.length - 1} onClick={() => void swap(i, i + 1)}>▼</button></div></td>
-                <td><input className="input" defaultValue={c.name} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== c.name) void save(() => saveCatalogDoc('categories', c.id, { ...c, name: v })) }} /></td>
-                <td className="num">{count(c.id)}</td>
-                <td><input type="checkbox" checked={c.active} onChange={() => void save(() => saveCatalogDoc('categories', c.id, { ...c, active: !c.active }))} /></td>
-                <td><button className="btn small danger" disabled={count(c.id) > 0} title={count(c.id) ? 'ย้ายเมนูออกก่อน' : ''} onClick={async () => { if (await confirm({ title: `ลบหมวด “${c.name}”?`, confirmText: 'ลบหมวด', danger: true })) void save(() => deleteCatalogDoc('categories', c.id), 'ลบแล้ว') }}>ลบ</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="small muted">
+        แต่ละหมวดเป็นของสไตล์เดียว (จีน หรือ ไทย) — เมนูในหมวดจะเป็นสไตล์นั้น และแสดงในแท็บ “เลือกเอง จีน / ไทย” ของ Sales ตามลำดับที่นี่ ·
+        “ประเภทจานเริ่มต้น” ใช้ตั้งค่าให้เมนูใหม่ในหมวด (เช็กความครบของมื้อ)
       </div>
-      <div className="row">
-        <input className="input" placeholder="ชื่อหมวดใหม่" value={name} onChange={(e) => setName(e.target.value)} />
-        <button className="btn primary" disabled={!name.trim()} onClick={() => {
-          const id = newId('categories')
-          void save(() => saveCatalogDoc('categories', id, { name: name.trim(), sort: (cats.at(-1)?.sort ?? 0) + 1, active: true })).then(() => setName(''))
-        }}>เพิ่ม</button>
-      </div>
+      {CUISINES.map((cu) => {
+        const list = cats.filter((c) => catCuisine(c) === cu)
+        return (
+          <section key={cu} className="stack" style={{ gap: 8 }}>
+            <h2><span className={`badge style-${cu}`}>{CUISINE_LABEL[cu]}</span> หมวดอาหาร{CUISINE_LABEL[cu]} <span className="small muted">({list.length})</span></h2>
+            {list.length === 0 ? <div className="small muted">ยังไม่มีหมวด — เพิ่มด้านล่าง หรือนำเข้าไฟล์ CSV ที่หน้า “นำเข้าข้อมูล”</div> : (
+              <div className="table-wrap">
+                <table className="list">
+                  <thead><tr><th>ลำดับ</th><th>ชื่อหมวด</th><th className="hide-mobile">ประเภทจานเริ่มต้น</th><th>สไตล์</th><th className="num">เมนู</th><th>แสดง</th><th></th></tr></thead>
+                  <tbody>
+                    {list.map((c, i) => (
+                      <tr key={c.id}>
+                        <td><div className="row" style={{ gap: 4 }}>
+                          <button className="icon-btn" aria-label="เลื่อนขึ้น" disabled={i === 0} onClick={() => void swap(c, list[i - 1])}>▲</button>
+                          <button className="icon-btn" aria-label="เลื่อนลง" disabled={i === list.length - 1} onClick={() => void swap(c, list[i + 1])}>▼</button>
+                        </div></td>
+                        <td><input className="input" defaultValue={c.name} aria-label="ชื่อหมวด" onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== c.name) void save(() => saveCatalogDoc('categories', c.id, { ...c, name: v })) }} /></td>
+                        <td className="hide-mobile">
+                          <select className="input" value={catCourse(c)} aria-label="ประเภทจานเริ่มต้น" onChange={(e) => void save(() => saveCatalogDoc('categories', c.id, { ...c, course: e.target.value as CourseId }))}>
+                            {COURSES.map((k) => <option key={k} value={k}>{COURSE_LABEL[k]}</option>)}
+                          </select>
+                        </td>
+                        <td>
+                          <select className="input" style={{ width: 'auto' }} value={catCuisine(c)} aria-label="สไตล์" onChange={async (e) => {
+                            const to = e.target.value as Cuisine
+                            const n = count(c.id)
+                            if (n > 0 && !(await confirm({ title: `เปลี่ยนหมวด “${c.name}” เป็นอาหาร${CUISINE_LABEL[to]}?`, message: `เมนู ${n} รายการในหมวดนี้จะเป็นอาหาร${CUISINE_LABEL[to]}ด้วย (เอกสารเก่าไม่เปลี่ยน)`, confirmText: 'เปลี่ยนสไตล์' }))) return
+                            void save(() => saveCatalogDoc('categories', c.id, { ...c, cuisine: to }))
+                          }}>
+                            {CUISINES.map((k) => <option key={k} value={k}>{CUISINE_LABEL[k]}</option>)}
+                          </select>
+                        </td>
+                        <td className="num">{count(c.id)}</td>
+                        <td><input type="checkbox" checked={c.active} aria-label="แสดงให้ Sales เห็น" onChange={() => void save(() => saveCatalogDoc('categories', c.id, { ...c, active: !c.active }))} /></td>
+                        <td><button className="btn small danger" disabled={count(c.id) > 0} title={count(c.id) ? 'ย้ายเมนูออกก่อน' : ''} onClick={async () => { if (await confirm({ title: `ลบหมวด “${c.name}”?`, confirmText: 'ลบหมวด', danger: true })) void save(() => deleteCatalogDoc('categories', c.id), 'ลบแล้ว') }}>ลบ</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        )
+      })}
+      <section className="card stack">
+        <h2>เพิ่มหมวดใหม่</h2>
+        <div className="row wrap">
+          <input className="input grow" style={{ minWidth: 180 }} placeholder="ชื่อหมวดใหม่ เช่น ต้ม - แกง" value={name} onChange={(e) => setName(e.target.value)} />
+          <select className="input" style={{ width: 'auto' }} value={newStyle} onChange={(e) => setNewStyle(e.target.value as Cuisine)} aria-label="สไตล์">
+            {CUISINES.map((k) => <option key={k} value={k}>อาหาร{CUISINE_LABEL[k]}</option>)}
+          </select>
+          <select className="input" style={{ width: 'auto' }} value={newCourse} onChange={(e) => setNewCourse(e.target.value as CourseId)} aria-label="ประเภทจานเริ่มต้น">
+            {COURSES.map((k) => <option key={k} value={k}>{COURSE_LABEL[k]}</option>)}
+          </select>
+          <button className="btn primary" disabled={!name.trim()} onClick={() => {
+            const id = newId('categories')
+            const doc: Omit<Category, 'id'> = { name: name.trim(), cuisine: newStyle, course: newCourse, sort: Math.max(0, ...cats.map((c) => c.sort ?? 0)) + 1, active: true }
+            void save(() => saveCatalogDoc('categories', id, doc)).then(() => setName(''))
+          }}>เพิ่มหมวด</button>
+        </div>
+      </section>
     </div>
   )
 }

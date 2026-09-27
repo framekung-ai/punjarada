@@ -85,6 +85,21 @@ export async function saveCatalogDoc(name: CatalogCollection, id: string, data: 
   await bumpCatalog()
 }
 
+/** Write many catalog docs at once (CSV import) — batches of 400, one version bump. */
+export async function saveCatalogDocs(ops: { name: CatalogCollection; id: string; data: object }[], onProgress?: (done: number, total: number) => void) {
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const { name, id, data } of ops.slice(i, i + 400)) {
+      const { id: _omit, ...rest } = data as { id?: string }
+      void _omit
+      batch.set(doc(db, name, id), clean(rest))
+    }
+    await batch.commit()
+    onProgress?.(Math.min(i + 400, ops.length), ops.length)
+  }
+  await bumpCatalog()
+}
+
 export async function deleteCatalogDoc(name: CatalogCollection, id: string) {
   await deleteDoc(doc(db, name, id))
   await bumpCatalog()
