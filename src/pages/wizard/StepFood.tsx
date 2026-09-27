@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Beo, BeoLine, Catalog, Cuisine, MealSlot, MenuItem, MenuSet, Service } from '../../lib/types'
 import { CUISINE_LABEL } from '../../lib/types'
-import { cuisinesIn, itemCuisine, lineName, mainCuisine, setCuisine } from '../../lib/cuisine'
+import { itemCuisine, lineName, mainCuisine, setCuisine } from '../../lib/cuisine'
 import { checkBalance, displayName, lineAmount, ruleMatches, suggestFor, type PricingResult } from '../../lib/pricing'
 import { money, num } from '../../lib/thai'
 import { Field, Sheet, Stepper, useToast } from '../../components/ui'
@@ -48,7 +48,6 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
   const tabs = availableTabs(catalog)
   const [tab, setTab] = useState<Tab>(() => firstTab(beo, tabs))
   const cuisineOf = (m: MenuItem) => itemCuisine(m, catalog.categories)
-  const mixed = cuisinesIn(beo.lines).size > 1
   const [openSet, setOpenSet] = useState<MenuSet | null>(null)
   const [picking, setPicking] = useState<MenuItem | null>(null)
   const [svcPick, setSvcPick] = useState<Service | null>(null)
@@ -110,7 +109,6 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
           </button>
         ))}
       </div>
-      {mixed && <div className="small muted">เลือกอาหารทั้งไทยและจีน — ในเอกสารจะมี (ไทย) / (จีน) ต่อท้ายชื่อรายการให้อัตโนมัติ</div>}
 
       {(tab === 'set-cn' || tab === 'set-th') && (
         <SetTab key={tab} cuisine={tab === 'set-th' ? 'th' : 'cn'} catalog={catalog} beo={beo} isRegular={isRegular} isAdmin={isAdmin}

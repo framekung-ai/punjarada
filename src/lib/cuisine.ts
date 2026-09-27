@@ -1,6 +1,6 @@
 // Thai / Chinese cooking styles — helpers shared by the Sales form, the document and Admin.
 import type { BeoLine, Category, CourseId, Cuisine, MealTemplate, MenuItem, MenuSet } from './types'
-import { COURSE_LABEL, CUISINE_LABEL } from './types'
+import { COURSE_LABEL } from './types'
 
 /** Records saved before styles existed have no field → จีน */
 export const catCuisine = (c: Pick<Category, 'cuisine'> | undefined): Cuisine => c?.cuisine ?? 'cn'
@@ -25,15 +25,13 @@ export function cuisinesIn(lines: BeoLine[]): Set<Cuisine> {
 }
 
 /**
- * Name to show on the cart and the BEO document. When a BEO mixes Thai and Chinese food,
- * every food line gets "(ไทย)" / "(จีน)" so the kitchen knows which recipe to cook,
- * e.g. ยำวุ้นเส้น (ไทย) and ยำวุ้นเส้น (จีน). Names that already say the style are left alone.
+ * Name to show on the cart and the BEO document — the plain dish name, also when a BEO mixes
+ * Thai and Chinese food (the hotel asked not to add "(ไทย)" / "(จีน)"). The line still keeps
+ * its `cuisine`, so the style can be shown again later by changing only this function.
  */
-export function lineName(l: BeoLine, lines: BeoLine[]): string {
-  if (!FOOD_KINDS.has(l.kind)) return l.name
-  if (cuisinesIn(lines).size < 2) return l.name
-  const label = CUISINE_LABEL[l.cuisine ?? 'cn']
-  return l.name.includes(label) ? l.name : `${l.name} (${label})`
+export function lineName(l: BeoLine, _lines?: BeoLine[]): string {
+  void _lines
+  return l.name
 }
 
 /** Main style of a BEO — decides which meal checklist to use. */

@@ -5,6 +5,7 @@ import thaiSetsCsv from '../../data/import-sets-thai.csv?raw'
 import type { BeoLine, Catalog } from './types'
 import { detectKind, parseCsv, parseMenuRows, parseSetRows, planImport, splitVariants } from './menuCsv'
 import { cuisinesIn, guessCourse, lineName, mainCuisine } from './cuisine'
+import { approverAfterSave } from './approver'
 
 const catalog = { ...(seed as unknown as Omit<Catalog, 'version'>), version: 1 }
 let n = 0
@@ -78,12 +79,10 @@ describe('Thai import files', () => {
 
 describe('mixed Thai + Chinese BEO', () => {
   const l = (name: string, kind: BeoLine['kind'], cuisine?: 'cn' | 'th'): BeoLine => ({ key: name, kind, name, qty: 1, unit: 'จาน', unitPrice: 100, cuisine })
-  it('adds (ไทย) / (จีน) only when both styles are chosen', () => {
-    const onlyCn = [l('ยำวุ้นเส้น', 'item'), l('ชุดจักรพรรดิ', 'set', 'cn')]
-    expect(lineName(onlyCn[0], onlyCn)).toBe('ยำวุ้นเส้น')
+  it('shows the plain dish name even when both styles are chosen', () => {
     const mixed = [l('ยำวุ้นเส้น', 'item', 'cn'), l('ยำวุ้นเส้น', 'item', 'th'), l('ชุดอาหารไทย A', 'set', 'th'), l('นักดนตรี', 'service')]
     expect(cuisinesIn(mixed).size).toBe(2)
-    expect(mixed.map((x) => lineName(x, mixed))).toEqual(['ยำวุ้นเส้น (จีน)', 'ยำวุ้นเส้น (ไทย)', 'ชุดอาหารไทย A', 'นักดนตรี'])
+    expect(mixed.map((x) => lineName(x, mixed))).toEqual(['ยำวุ้นเส้น', 'ยำวุ้นเส้น', 'ชุดอาหารไทย A', 'นักดนตรี'])
   })
   it('a Thai set makes the BEO a Thai meal', () => {
     expect(mainCuisine([l('ชุดอาหารไทย A', 'set', 'th'), l('ยำวุ้นเส้น', 'item', 'cn')])).toBe('th')
@@ -99,5 +98,19 @@ describe('helpers', () => {
   it('guesses the dish type from Thai names', () => {
     expect(['หลนเต้าเจี้ยว - ผักสด', 'แกงส้มปลาทอดผักรวม', 'ปลาทับทิมผัดฉ่า', 'ข้าวหอมมะลิ ขนมจีน', 'ผลไม้รวม', 'ทอดมันปลากราย', 'ถั่วลันเตาผัดเห็ดฟาง', 'น้ำตกหมู'].map(guessCourse))
       .toEqual(['chili', 'soup', 'fish', 'rice', 'dessert', 'main', 'veg', 'yum'])
+  })
+})
+
+describe('approver on the signature line', () => {
+  const admin = { uid: 'a1', name: 'แอดมิน', isAdmin: true }
+  const sales = { uid: 's1', name: 'เซลส์', isAdmin: false }
+  it('Admin confirming a pending BEO becomes the approver', () => {
+    expect(approverAfterSave('confirmed', 'pending', { uid: null, name: null }, admin)).toEqual({ uid: 'a1', name: 'แอดมิน' })
+  })
+  it('Admin re-saving an approved BEO keeps the first approver', () => {
+    expect(approverAfterSave('confirmed', 'confirmed', { uid: 'a0', name: 'คนแรก' }, admin)).toEqual({ uid: 'a0', name: 'คนแรก' })
+  })
+  it('Sales editing an approved BEO clears it until Admin approves again', () => {
+    expect(approverAfterSave('pending', 'confirmed', { uid: 'a0', name: 'คนแรก' }, sales)).toEqual({ uid: null, name: null })
   })
 })

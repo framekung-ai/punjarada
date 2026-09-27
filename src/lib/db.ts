@@ -9,6 +9,7 @@ import type {
   AppUser, Beo, Catalog, Category, CustomerRecord, FocRule, MenuItem, MenuSet, Service, Settings,
 } from './types'
 import { buddhistYear } from './thai'
+import { approverAfterSave } from './approver'
 
 // ---------------- Catalog (menu, sets, services, FOC, settings) ----------------
 // Quota saver: the whole catalog (~170 docs) is cached in localStorage together with
@@ -256,7 +257,10 @@ export async function submitBeo(
       ? (b.status === 'draft' || b.status === 'pending' ? 'confirmed' : b.status)
       : 'pending'
     const revision = wasConfirmed ? (b.revision ?? 0) + 1 : (b.revision ?? 0)
-    const saved = { ...b, docNo, revision, status, editedByUid: actor.uid, editedByName: actor.name }
+    // approver shown on the signature line: set when Admin confirms, cleared when Sales sends it back for approval
+    const cur = current?.exists() ? current.data() : null
+    const approver = approverAfterSave(status, cs, cur ? { uid: cur.approvedByUid ?? null, name: cur.approvedByName ?? null } : null, actor)
+    const saved = { ...b, docNo, revision, status, editedByUid: actor.uid, editedByName: actor.name, approvedByUid: approver.uid, approvedByName: approver.name }
     const data = {
       ...beoPayload(saved),
       updatedAt: serverTimestamp(),
@@ -305,7 +309,10 @@ export async function setBeoStatus(id: string, status: Beo['status'], actor?: Ac
     })
   }
   batch.update(doc(db, 'beos', id), {
-    status, updatedAt: serverTimestamp(), ...(status === 'confirmed' ? { confirmedAt: serverTimestamp() } : {}),
+    status, updatedAt: serverTimestamp(),
+    ...(status === 'confirmed' ? { confirmedAt: serverTimestamp() } : {}),
+    // Admin confirming (or restoring) a BEO becomes its ผู้อนุมัติ
+    ...(status === 'confirmed' && actor ? { approvedByUid: actor.uid, approvedByName: actor.name } : {}),
   })
   const bk = await getDoc(doc(db, 'bookings', id))
   if (bk.exists()) batch.update(doc(db, 'bookings', id), { status })

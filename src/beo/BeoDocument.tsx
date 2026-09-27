@@ -36,6 +36,8 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
     s.tables > 0 ? `${s.tables} โต๊ะ${s.seatsPerTable ? ` (โต๊ะละ ${s.seatsPerTable} ท่าน)` : ''}` : '',
     s.spareTables > 0 ? `สำรอง ${s.spareTables} โต๊ะ` : '',
   ].filter(Boolean).join(' · ')
+  // ชื่อผู้อนุมัติ appears once Admin has confirmed the BEO (blank while draft / waiting for approval)
+  const approver = beo.status === 'confirmed' || beo.status === 'completed' || beo.status === 'cancelled' ? (beo.approvedByName ?? '') : ''
   const numbering = new Map([...food, ...services, ...foc].map((l, i) => [l.key, i + 1]))
 
   const lineRow = (l: BeoLine, amount = true) => {
@@ -160,7 +162,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
       </section>
 
       <section className="bd-sign">
-        {[['ผู้รับงาน', beo.salesName], ['ผู้อนุมัติ', ''], ['ลูกค้า', beo.customer.name]].map(([role, name]) => (
+        {[['ผู้รับงาน', beo.salesName], ['ผู้อนุมัติ', approver], ['ลูกค้า', beo.customer.name]].map(([role, name]) => (
           <div key={role}>
             <div className="bd-line" />
             <div>({name || '..............................'})</div>

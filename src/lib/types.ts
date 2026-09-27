@@ -263,6 +263,9 @@ export interface Beo {
   /** ผู้แก้ไขล่าสุด */
   editedByUid?: string
   editedByName?: string
+  /** ผู้อนุมัติ (Admin ที่ยืนยันงาน) — แสดงในช่องลงนาม “ผู้อนุมัติ” ของเอกสาร; ล้างเมื่อ Sales แก้งานจนกลับเป็นรอการยืนยัน */
+  approvedByUid?: string | null
+  approvedByName?: string | null
   /** Sales ขอให้ Admin ลบ (เอกสารที่ยืนยันแล้ว) */
   deleteRequest?: DeleteRequest | null
   createdAt?: unknown

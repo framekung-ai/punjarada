@@ -3,6 +3,7 @@
 import seed from '../seed/seed.json'
 import type { AppUser, Beo, Catalog, CustomerRecord, Settings } from '../lib/types'
 import { buddhistYear } from '../lib/thai'
+import { approverAfterSave } from '../lib/approver'
 
 export const CATALOG_COLLECTIONS = ['categories', 'menuItems', 'menuSets', 'services', 'focRules'] as const
 export type CatalogCollection = (typeof CATALOG_COLLECTIONS)[number]
@@ -108,7 +109,8 @@ export async function submitBeo(id: string | undefined, b: Beo, actor: { uid: st
   }
   const status: Beo['status'] = actor.isAdmin ? (b.status === 'draft' || b.status === 'pending' ? 'confirmed' : b.status) : 'pending'
   const revision = wasConfirmed ? (b.revision ?? 0) + 1 : (b.revision ?? 0)
-  const saved = { ...plain(b), deleteRequest: cur?.deleteRequest ?? null, editedByUid: actor.uid, editedByName: actor.name, id: bid, docNo, revision, status, confirmedAt: status === 'confirmed' ? (cur?.confirmedAt ?? Date.now()) : cur?.confirmedAt, updatedAt: Date.now() } as Beo & { _rev?: Beo[] }
+  const approver = approverAfterSave(status, cs, cur ? { uid: cur.approvedByUid ?? null, name: cur.approvedByName ?? null } : null, actor)
+  const saved = { ...plain(b), deleteRequest: cur?.deleteRequest ?? null, editedByUid: actor.uid, editedByName: actor.name, approvedByUid: approver.uid, approvedByName: approver.name, id: bid, docNo, revision, status, confirmedAt: status === 'confirmed' ? (cur?.confirmedAt ?? Date.now()) : cur?.confirmedAt, updatedAt: Date.now() } as Beo & { _rev?: Beo[] }
   const action = actor.isAdmin ? (status === 'confirmed' && cs !== 'confirmed' ? 'confirm' : 'edit') : (cs === 'pending' ? 'edit' : 'submit')
   saved._rev = [...(cur?._rev ?? []), { ...plain(b), docNo, revision, status, action, prevStatus: cs ?? 'new', savedBy: actor.uid, savedByName: actor.name, savedAt: Date.now() } as unknown as Beo]
   store.beos[bid] = saved
@@ -136,6 +138,7 @@ export async function setBeoStatus(id: string, status: Beo['status'], actor?: Ac
   if (actor && beo) cur._rev = [...(cur._rev ?? []), { revision: beo.revision ?? 0, status, prevStatus: beo.status, action: 'status', docNo: beo.docNo, totals: beo.totals, savedBy: actor.uid, savedByName: actor.name, savedAt: Date.now() } as unknown as Beo]
   cur.status = status
   if (status === 'confirmed') cur.confirmedAt = Date.now()
+  if (status === 'confirmed' && actor) { cur.approvedByUid = actor.uid; cur.approvedByName = actor.name }
   persist()
 }
 export async function requestDeleteBeo(id: string, by: Actor | null, reason = '') {

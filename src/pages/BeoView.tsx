@@ -71,7 +71,11 @@ export function BeoView() {
 
   const changeStatus = async (s: Beo['status']) => {
     if (s === 'cancelled' && !(await confirm({ title: 'ยกเลิกงานนี้?', message: `${beo.event.name} · ${beo.docNo ?? ''}\nห้องจะกลับมาว่างในระบบ กด “คืนสถานะยืนยัน” ได้ภายหลัง`, confirmText: 'ยกเลิกงาน', cancelText: 'ไม่ยกเลิก', danger: true }))) return
-    try { await setBeoStatus(id, s, actor, beo); setBeo({ ...beo, status: s }); toast('อัปเดตสถานะแล้ว') } catch (e) { toast(errorText(e)) }
+    try {
+      await setBeoStatus(id, s, actor, beo)
+      setBeo({ ...beo, status: s, ...(s === 'confirmed' ? { approvedByUid: actor.uid, approvedByName: actor.name } : {}) })
+      toast(s === 'confirmed' ? `ยืนยันงานแล้ว — ผู้อนุมัติ: ${actor.name}` : 'อัปเดตสถานะแล้ว')
+    } catch (e) { toast(errorText(e)) }
   }
 
   const removeNow = async () => {
@@ -110,6 +114,7 @@ export function BeoView() {
           <div className="edited-by">
             ผู้รับงาน <strong>{beo.salesName}</strong>
             {edited && <> · แก้ไขล่าสุดโดย <strong>{beo.editedByName}</strong></>}
+            {beo.approvedByName && beo.status !== 'pending' && beo.status !== 'draft' && <> · ผู้อนุมัติ <strong>{beo.approvedByName}</strong></>}
           </div>
         </div>
       </div>
