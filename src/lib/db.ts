@@ -198,7 +198,7 @@ export async function listBeosByPhone(phone: string): Promise<Beo[]> {
 
 export async function findCustomer(phone: string): Promise<CustomerRecord | null> {
   const k = phoneKey(phone)
-  if (k.length < 9) return null
+  if (k.length < 9 || k.length > 10) return null
   const s = await getDoc(doc(db, 'customers', k))
   return s.exists() ? (s.data() as CustomerRecord) : null
 }
@@ -241,7 +241,8 @@ export async function submitBeo(
     const wasConfirmed = cs === 'confirmed' || cs === 'completed' || cs === 'cancelled'
     let docNo = (current?.data()?.docNo as string | null) ?? b.docNo
     const custKey = phoneKey(b.customer.phone)
-    const custRef = custKey.length >= 9 ? doc(db, 'customers', custKey) : null
+    // customer directory is keyed by 9–10 digit Thai numbers (see firestore.rules); other numbers are kept on the BEO only
+    const custRef = custKey.length >= 9 && custKey.length <= 10 ? doc(db, 'customers', custKey) : null
     const cust = custRef ? await tx.get(custRef) : null
     if (!docNo) {
       const year = buddhistYear(b.event.date || undefined)

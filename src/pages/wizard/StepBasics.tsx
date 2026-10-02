@@ -3,7 +3,7 @@ import type { Beo, Catalog } from '../../lib/types'
 import { Field, Stepper, useToast } from '../../components/ui'
 import { ThaiDatePicker } from '../../components/ThaiDatePicker'
 import { bookingsOnDate, findCustomer, type Booking } from '../../lib/db'
-import { thaiDate } from '../../lib/thai'
+import { phoneFormat, thaiDate } from '../../lib/thai'
 import type { StepErrors } from './model'
 import { LayoutIcon, TypeIcon } from './icons'
 
@@ -93,8 +93,9 @@ export function StepCustomer({ beo, setBeo, errors, onRegular }: StepProps & { o
     <div className="stack">
       <h2>ข้อมูลลูกค้า</h2>
       <Field label="เบอร์โทรศัพท์" required error={errors.phone} hint="ใส่เฉพาะตัวเลข (เช่น 0630388996)">
-        <input className={`input${errors.phone ? ' invalid' : ''}`} inputMode="numeric" autoComplete="off" value={c.phone}
-          onChange={(e) => set('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} onBlur={() => void lookup()} />
+        {/* stored as digits only; shown with dashes (098-693-2917 / 044-922-116) */}
+        <input className={`input${errors.phone ? ' invalid' : ''}`} inputMode="tel" autoComplete="off" value={phoneFormat(c.phone)}
+          onChange={(e) => set('phone', e.target.value.replace(/\D/g, ''))} onBlur={() => void lookup()} />
       </Field>
       <Field label="ชื่อลูกค้า" required error={errors.name} hint="กรอกชื่อ-สกุล ของลูกค้า (เช่น คุณไพบูลย์เกียรติ เขียวแก้ว)">
         <input className={`input${errors.name ? ' invalid' : ''}`} value={c.name} onChange={(e) => set('name', e.target.value)} />
@@ -108,7 +109,7 @@ export function StepCustomer({ beo, setBeo, errors, onRegular }: StepProps & { o
           <Field label="ที่อยู่"><input className="input" value={c.address} onChange={(e) => set('address', e.target.value)} /></Field>
           <div className="grid2">
             <Field label="ผู้ประสานงานหน้างาน"><input className="input" value={c.contactName} onChange={(e) => set('contactName', e.target.value)} /></Field>
-            <Field label="เบอร์ผู้ประสานงาน"><input className="input" inputMode="numeric" placeholder="0812345678" value={c.contactPhone} onChange={(e) => set('contactPhone', e.target.value.replace(/\D/g, '').slice(0, 10))} /></Field>
+            <Field label="เบอร์ผู้ประสานงาน"><input className="input" inputMode="tel" value={phoneFormat(c.contactPhone)} onChange={(e) => set('contactPhone', e.target.value.replace(/\D/g, ''))} /></Field>
           </div>
         </div>
       </details>

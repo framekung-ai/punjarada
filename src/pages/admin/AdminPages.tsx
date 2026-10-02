@@ -4,7 +4,7 @@ import type { Beo } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
 import { Trash2, X } from 'lucide-react'
 import { deleteBeos, listBeosBetween, listDeleteRequests, listPendingBeos } from '../../lib/db'
-import { money, num, thaiDate, timeRange, todayIso } from '../../lib/thai'
+import { addDaysIso, money, num, thaiDate, timeRange, todayIso } from '../../lib/thai'
 import { MonthPicker, monthRange } from '../../components/MonthPicker'
 import { Empty, errorText, Spinner, StatusBadge, useConfirm, useToast } from '../../components/ui'
 import { CategoriesAdmin, MenuAdmin, ServicesAdmin } from './CatalogAdmin'
@@ -51,6 +51,14 @@ function useMonthBeos(ym: string) {
   return { beos, err, setBeos }
 }
 
+/** group BEOs by event date (ascending), each day sorted by start time; at most `max` events */
+function groupByDay(beos: Beo[], max: number): [string, Beo[]][] {
+  const sorted = [...beos].sort((a, b) => a.event.date.localeCompare(b.event.date) || (a.event.start || '99').localeCompare(b.event.start || '99')).slice(0, max)
+  const days = new Map<string, Beo[]>()
+  for (const b of sorted) days.set(b.event.date, [...(days.get(b.event.date) ?? []), b])
+  return [...days.entries()]
+}
+
 function Dashboard() {
   const navigate = useNavigate()
   const [ym, setYm] = useState(todayIso().slice(0, 7))
@@ -80,7 +88,14 @@ function Dashboard() {
     }
   }, [beos])
   const today = todayIso()
-  const upcoming = (beos ?? []).filter((b) => b.status === 'confirmed' && b.event.date >= today).sort((a, b) => a.event.date.localeCompare(b.event.date)).slice(0, 10)
+  // next 30 days of confirmed work, independent of the month picker (so the 30th also shows next month)
+  const [upcoming, setUpcoming] = useState<Beo[] | null>(null)
+  useEffect(() => {
+    listBeosBetween(today, addDaysIso(today, 30))
+      .then((r) => setUpcoming(r.filter((b) => b.status === 'confirmed')))
+      .catch(() => setUpcoming([]))
+  }, [today])
+  const upcomingDays = useMemo(() => groupByDay(upcoming ?? [], 25), [upcoming])
   return (
     <div className="stack">
       <div className="page-head"><h1>แดชบอร์ด</h1><MonthPicker value={ym} onChange={setYm} /></div>
@@ -119,13 +134,31 @@ function Dashboard() {
           </div>
           <div className="grid2">
             <section className="card stack">
-              <h2>งานที่กำลังจะถึง</h2>
-              {upcoming.length ? upcoming.map((b) => (
-                <div key={b.id} className="row between" style={{ cursor: 'pointer' }} onClick={() => navigate(`/beo/${b.id}`)}>
-                  <div><strong>{thaiDate(b.event.date, { short: true })}</strong> <span className="small muted">{timeRange(b.event.start, b.event.end)}</span><div className="small">{b.event.name} · {b.event.room}</div></div>
-                  <span className="num small">{money(b.totals.grandTotal)}</span>
+              <div className="row between"><h2>งานที่กำลังจะถึง</h2><span className="small muted">30 วันข้างหน้า</span></div>
+              {!upcoming ? <Spinner /> : upcomingDays.length === 0 ? <div className="muted">ไม่มีงานที่ยืนยันแล้ว</div> : (
+                <div className="up-days">
+                  {upcomingDays.map(([date, list]) => (
+                    <div key={date} className="up-day">
+                      <div className="up-date">
+                        <strong>{thaiDate(date, { short: true, dow: true })}</strong>
+                        {date === today && <span className="badge ok">วันนี้</span>}
+                        {date === addDaysIso(today, 1) && <span className="badge">พรุ่งนี้</span>}
+                        <span className="small muted" style={{ marginLeft: 'auto' }}>{list.length} งาน</span>
+                      </div>
+                      {list.map((b) => (
+                        <button key={b.id} type="button" className="up-row" onClick={() => navigate(`/beo/${b.id}`)}>
+                          <span className="up-time num">{timeRange(b.event.start, b.event.end)}</span>
+                          <span className="up-name">
+                            <strong>{b.event.name}</strong>{b.seating.guests > 0 && <span className="muted"> ({num(b.seating.guests)} คน)</span>}
+                            <span className="muted"> · {b.event.room}</span>
+                          </span>
+                          <span className="up-amt num">{money(b.totals.grandTotal)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              )) : <div className="muted">ไม่มีงาน</div>}
+              )}
             </section>
             <section className="card stack">
               <h2>เมนู / เซ็ตที่ขายบ่อย</h2>

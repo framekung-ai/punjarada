@@ -40,7 +40,7 @@ export function validateStep(step: number, b: Beo): StepErrors {
   if (step === 1) {
     if (!b.customer.name.trim()) e.name = 'กรอกชื่อลูกค้า'
     const d = b.customer.phone.replace(/\D/g, '')
-    if (d.length < 9 || d.length > 10) e.phone = 'เบอร์โทร 9–10 หลัก'
+    if (d.length < 9) e.phone = 'กรอกเบอร์โทรอย่างน้อย 9 หลัก'
   }
   if (step === 2) {
     if (!b.event.name.trim()) e.eventName = 'กรอกชื่องาน'

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BadgePercent, CheckCircle2, History, Pencil, Trash2 } from 'lucide-react'
 import type { Beo } from '../lib/types'
@@ -13,6 +13,7 @@ import { exportJpg, exportPdf, sharePdf } from '../beo/export'
 import { errorText, Sheet, Spinner, StatusBadge, useToast, useConfirm } from '../components/ui'
 import { money, thaiDate } from '../lib/thai'
 import { canEditBeo, editWarning } from './editGuard'
+import { changesForHistory } from '../lib/revisionDiff'
 
 const ACTION_LABEL: Record<string, string> = {
   submit: 'ส่งให้ Admin ยืนยัน', edit: 'แก้ไข', confirm: 'ยืนยันงาน', status: 'เปลี่ยนสถานะ',
@@ -43,6 +44,7 @@ export function BeoView() {
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [revs, setRevs] = useState<Revision[] | null>(null)
+  const revChanges = useMemo(() => (revs ? changesForHistory(revs) : []), [revs])
   const [discountOpen, setDiscountOpen] = useState(false)
   const [approving, setApproving] = useState(false)
   const exportRef = useRef<HTMLDivElement>(null)
@@ -200,6 +202,7 @@ export function BeoView() {
         {revs?.length === 0 && <div className="muted">ยังไม่มีประวัติ — ประวัติจะเริ่มบันทึกเมื่อส่งเอกสาร</div>}
         {revs?.map((r, i) => (
           <div key={i} className="card flat rev-item">
+            {/* what changed compared with the previous saved version */}
             <div>
               <span className="who">{r.savedByName || 'ไม่ทราบชื่อ'}</span>
               {r.savedBy && r.savedBy === beo.salesUid && <span className="badge gray" style={{ marginLeft: 6 }}>ผู้รับงาน</span>}
@@ -208,9 +211,27 @@ export function BeoView() {
             <span className="num">{r.totals ? money(r.totals.grandTotal) : ''}</span>
             <div className="small">{revText(r)} · Rev.{r.revision ?? 0}{r.totals?.discount ? ` · ส่วนลดรวม ${money(r.totals.discount)}` : ''}</div>
             <span className="small muted">{r.savedAt?.toDate().toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+            {revChanges[i]?.length > 0 && <RevChanges items={revChanges[i]} />}
           </div>
         ))}
       </Sheet>
     </div>
   )
+}
+
+/** small chips under a history entry: “เพิ่ม ยำวุ้นเส้น”, “แขก 50 → 60 ท่าน”, “มอบส่วนลด 10%” … */
+function RevChanges({ items }: { items: string[] }) {
+  const [all, setAll] = useState(false)
+  const shown = all ? items : items.slice(0, 6)
+  return (
+    <ul className="rev-changes" aria-label="รายการที่แก้ไข">
+      {shown.map((t, k) => <li key={k} className={changeKind(t)}>{t}</li>)}
+      {!all && items.length > 6 && <li><button type="button" className="linklike" onClick={() => setAll(true)}>+ อีก {items.length - 6} รายการ</button></li>}
+    </ul>
+  )
+}
+function changeKind(t: string) {
+  if (/^(เพิ่ม|ให้ฟรี|มอบส่วนลด)/.test(t)) return 'add'
+  if (/^(ลบ|ยกเลิก)/.test(t)) return 'del'
+  return ''
 }

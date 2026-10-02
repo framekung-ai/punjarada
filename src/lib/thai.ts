@@ -17,12 +17,16 @@ function parseIso(iso: string): Date | null {
 }
 
 /** 2026-09-26 -> 26 กันยายน 2569 */
-export function thaiDate(iso: string, opts: { short?: boolean; weekday?: boolean } = {}): string {
+export const THAI_DAYS_SHORT = ['อา.', 'จ.', 'อ.', 'พ.', 'พฤ.', 'ศ.', 'ส.']
+
+/** weekday: “วันศุกร์ที่ 2 ตุลาคม 2569” · dow: “2 ต.ค. 2569 (ศ.)” */
+export function thaiDate(iso: string, opts: { short?: boolean; weekday?: boolean; dow?: boolean } = {}): string {
   const d = parseIso(iso)
   if (!d) return '-'
   const month = (opts.short ? THAI_MONTHS_SHORT : THAI_MONTHS)[d.getMonth()]
   const s = `${d.getDate()} ${month} ${d.getFullYear() + 543}`
-  return opts.weekday ? `วัน${THAI_DAYS[d.getDay()]}ที่ ${s}` : s
+  if (opts.weekday) return `วัน${THAI_DAYS[d.getDay()]}ที่ ${s}`
+  return opts.dow ? `${s} (${THAI_DAYS_SHORT[d.getDay()]})` : s
 }
 
 export function todayIso(): string {
@@ -106,9 +110,14 @@ export function bahtText(amount: number): string {
   return (neg ? 'ลบ' : '') + out
 }
 
+/**
+ * 10 digits (mobile)   → 098-693-2917
+ * 9 digits (landline)  → 044-922-116
+ * other lengths are left as typed (no limit on how many digits)
+ */
 export function phoneFormat(p: string): string {
-  const d = p.replace(/\D/g, '')
+  const d = (p ?? '').replace(/\D/g, '')
   if (d.length === 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
-  if (d.length === 9) return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`
-  return p
+  if (d.length === 9) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
+  return d || p
 }

@@ -8,9 +8,23 @@ export function exportFileName(beo: Beo, ext: 'pdf' | 'jpg'): string {
   return `${beo.docNo ?? 'BEO-แบบร่าง'}_${name}${be ? `_${be}` : ''}.${ext}`
 }
 
-async function render(node: HTMLElement): Promise<string> {
+/**
+ * Sharpness: the document is 794 px wide (= A4 at 96 dpi).
+ * - PDF for printing: ×3.15 ≈ 300 dpi
+ * - JPG for LINE / screens: ×2.5 (was ×2)
+ * iPhone / iPad Safari refuse canvases over ~16.7 million pixels, so very long documents are scaled
+ * down just enough to stay under that limit instead of failing.
+ */
+const MAX_CANVAS_PIXELS = 16_000_000
+function pixelRatioFor(node: HTMLElement, wanted: number): number {
+  const area = Math.max(1, node.offsetWidth * node.offsetHeight)
+  return Math.max(1, Math.min(wanted, Math.sqrt(MAX_CANVAS_PIXELS / area)))
+}
+
+async function render(node: HTMLElement, quality: 'print' | 'screen'): Promise<string> {
   await document.fonts?.ready
-  return toJpeg(node, { quality: 0.92, pixelRatio: 2, backgroundColor: '#ffffff', cacheBust: true })
+  const pixelRatio = pixelRatioFor(node, quality === 'print' ? 3.15 : 2.5)
+  return toJpeg(node, { quality: quality === 'print' ? 0.95 : 0.93, pixelRatio, backgroundColor: '#ffffff', cacheBust: true })
 }
 
 function download(url: string, name: string) {
@@ -23,31 +37,123 @@ function download(url: string, name: string) {
 }
 
 export async function exportJpg(node: HTMLElement, beo: Beo) {
-  download(await render(node), exportFileName(beo, 'jpg'))
+  download(await render(node, 'screen'), exportFileName(beo, 'jpg'))
 }
 
-/** Renders the document to an image and splits it over A4 pages. Works offline. */
-export async function makePdf(node: HTMLElement): Promise<Blob> {
-  const { jsPDF } = await import('jspdf')
-  const img = await render(node)
-  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true })
-  const pageW = 210
-  const pageH = 297
-  const ratio = node.offsetHeight / node.offsetWidth
-  const imgH = pageW * ratio
-  let y = 0
-  let first = true
-  while (y < imgH - 1) {
-    if (!first) pdf.addPage()
-    pdf.addImage(img, 'JPEG', 0, -y, pageW, imgH, undefined, 'FAST')
-    y += pageH
-    first = false
+// ---------------- PDF (A4, page breaks between blocks) ----------------
+
+const A4_W_MM = 210
+const A4_H_MM = 297
+
+/** blocks that must not be cut in half (CSS px, relative to the document top) */
+interface Block { top: number; bottom: number; keepWithNext?: boolean; keepWithPrev?: boolean }
+
+function measureBlocks(node: HTMLElement): Block[] {
+  const origin = node.getBoundingClientRect().top
+  const sel = '.bd-head, .bd-title, .bd-info, .bd-venue, .bd-table thead tr, .bd-table tbody tr, .bd-sum, .bd-sign'
+  return [...node.querySelectorAll<HTMLElement>(sel)].map((el) => {
+    const r = el.getBoundingClientRect()
+    return {
+      top: r.top - origin,
+      bottom: r.bottom - origin,
+      keepWithNext: el.classList.contains('bd-group') || el.parentElement?.tagName === 'THEAD', // section heading stays with its first row
+      keepWithPrev: el.classList.contains('bd-sign'), // signatures stay with the totals
+    }
+  }).sort((a, b) => a.top - b.top)
+}
+
+/**
+ * Where each A4 page starts and ends (CSS px). A page ends just before the first block that would
+ * not fit, so table rows, the totals box and the signatures are never split across pages.
+ */
+export function pageBreaks(
+  totalH: number, blocks: Block[], pageH: number, topMargin: number, bottomMargin: number,
+  /** table header repeated on pages that continue the table */
+  header?: { height: number; tableTop: number; tableBottom: number },
+): [number, number][] {
+  const pages: [number, number][] = []
+  let start = 0
+  while (start < totalH - 1) {
+    const repeat = header && pages.length > 0 && start > header.tableTop && start < header.tableBottom ? header.height : 0
+    const room = pageH - (pages.length ? topMargin : 0) - bottomMargin - repeat
+    let end = start + room
+    if (end >= totalH) { pages.push([start, totalH]); break }
+    // first block that crosses the page end
+    let i = blocks.findIndex((b) => b.bottom > end && b.top < end && b.top > start)
+    if (i >= 0) {
+      // keep headings with the next row, signatures with the totals
+      while (i > 0 && (blocks[i - 1].keepWithNext || blocks[i].keepWithPrev) && blocks[i - 1].top > start + 1) i--
+      end = blocks[i].top
+    }
+    if (end <= start + 40) end = start + room // a single block taller than a page: cut it (cannot be helped)
+    pages.push([start, end])
+    start = end
   }
+  return pages
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src })
+}
+
+/** Renders the document once at print resolution, then lays it out on A4 pages without cutting rows. */
+export async function makePdf(node: HTMLElement, label = ''): Promise<Blob> {
+  const { jsPDF } = await import('jspdf')
+  const blocks = measureBlocks(node)
+  const cssW = node.offsetWidth
+  const cssH = node.offsetHeight
+  const pageCssH = cssW * (A4_H_MM / A4_W_MM) // 794 px wide → 1123 px tall
+  // the document has min-height = one A4 page; paginate on where the content really ends
+  const contentH = Math.min(cssH, Math.max(0, ...blocks.map((x) => x.bottom)) + 36)
+  const origin = node.getBoundingClientRect().top
+  const thead = node.querySelector('.bd-table thead')?.getBoundingClientRect()
+  const tbody = node.querySelector('.bd-table tbody')?.getBoundingClientRect()
+  const header = thead && tbody ? { top: thead.top - origin, height: thead.height, tableTop: thead.bottom - origin, tableBottom: tbody.bottom - origin } : undefined
+  // up to 15% longer than A4 → shrink slightly onto one page instead of a near-empty second page
+  const FIT_ONE_PAGE = 1.15
+  const onePage = contentH <= pageCssH * FIT_ONE_PAGE
+  const breaks: [number, number][] = onePage ? [[0, Math.max(contentH, Math.min(cssH, pageCssH))]] : pageBreaks(contentH, blocks, pageCssH, 40, 30, header)
+  const img = await loadImage(await render(node, 'print'))
+  const k = img.width / cssW // image pixels per CSS px
+
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true })
+  const canvas = document.createElement('canvas')
+  canvas.width = img.width
+  canvas.height = Math.round(pageCssH * k)
+  const ctx = canvas.getContext('2d')!
+  if (onePage) {
+    const [, to] = breaks[0]
+    const scale = Math.min(1, pageCssH / to)
+    const w = img.width * scale
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(img, 0, 0, img.width, Math.round(to * k), Math.round((img.width - w) / 2), 0, Math.round(w), Math.round(to * k * scale))
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, A4_W_MM, A4_H_MM, 'p0', 'NONE')
+    return pdf.output('blob')
+  }
+  breaks.forEach(([from, to], n) => {
+    let top = n === 0 ? 0 : 40
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    // page continues the item table → repeat its blue header row first
+    if (n > 0 && header && from > header.tableTop && from < header.tableBottom) {
+      ctx.drawImage(img, 0, Math.round(header.top * k), img.width, Math.round(header.height * k), 0, Math.round(top * k), img.width, Math.round(header.height * k))
+      top += header.height
+    }
+    ctx.drawImage(img, 0, Math.round(from * k), img.width, Math.round((to - from) * k), 0, Math.round(top * k), img.width, Math.round((to - from) * k))
+    if (n > 0) pdf.addPage('a4', 'portrait')
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, A4_W_MM, A4_H_MM, `p${n}`, 'NONE')
+    if (breaks.length > 1) {
+      pdf.setFontSize(8)
+      pdf.setTextColor(120)
+      pdf.text(`${label ? `${label}  ·  ` : ''}${n + 1} / ${breaks.length}`, A4_W_MM - 10, A4_H_MM - 6, { align: 'right' })
+    }
+  })
   return pdf.output('blob')
 }
 
 export async function exportPdf(node: HTMLElement, beo: Beo) {
-  const blob = await makePdf(node)
+  const blob = await makePdf(node, beo.docNo ?? '')
   const url = URL.createObjectURL(blob)
   download(url, exportFileName(beo, 'pdf'))
   setTimeout(() => URL.revokeObjectURL(url), 10_000)
@@ -55,7 +161,7 @@ export async function exportPdf(node: HTMLElement, beo: Beo) {
 
 /** Mobile: share the PDF straight into LINE etc. Falls back to download. */
 export async function sharePdf(node: HTMLElement, beo: Beo): Promise<boolean> {
-  const blob = await makePdf(node)
+  const blob = await makePdf(node, beo.docNo ?? '')
   const file = new File([blob], exportFileName(beo, 'pdf'), { type: 'application/pdf' })
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
   if (nav.canShare?.({ files: [file] })) {

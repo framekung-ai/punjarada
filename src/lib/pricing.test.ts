@@ -200,3 +200,13 @@ describe('VAT toggle', () => {
     expect(r.totals.grandTotal).toBe(30000)
   })
 })
+
+describe('phone format', () => {
+  it('mobile 10 digits and landline 9 digits', async () => {
+    const { phoneFormat } = await import('./thai')
+    expect(phoneFormat('0986932917')).toBe('098-693-2917')
+    expect(phoneFormat('044922116')).toBe('044-922-116')
+    expect(phoneFormat('098-693-2917')).toBe('098-693-2917')
+    expect(phoneFormat('6644922116123')).toBe('6644922116123') // other lengths unchanged, no limit
+  })
+})
