@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Beo, BeoLine, Catalog, Cuisine, MealSlot, MenuItem, MenuSet, Service } from '../../lib/types'
 import { CUISINE_LABEL } from '../../lib/types'
 import { itemCuisine, lineName, mainCuisine, setCuisine } from '../../lib/cuisine'
+import { isRoomService } from '../../lib/roomService'
 import { checkBalance, displayName, lineAmount, ruleMatches, suggestFor, type PricingResult } from '../../lib/pricing'
 import { money, num } from '../../lib/thai'
 import { Field, Sheet, Stepper, useToast } from '../../components/ui'
@@ -84,11 +85,11 @@ export function StepFood({ beo, catalog, priced, updateLines, isRegular, isAdmin
     <div className="stack">
       <div className="row between wrap">
         <h2>อาหารและบริการ</h2>
-        <span className="small muted">{beo.seating.tables > 0 ? `${beo.seating.tables} โต๊ะ · ` : ''}{num(beo.seating.guests)} ท่าน · ราคาก่อน VAT</span>
+        <span className="small muted">{isRoomService(beo) ? `Room service · ห้อง ${beo.roomNo ?? ''} · ` : beo.seating.tables > 0 ? `${beo.seating.tables} โต๊ะ · ` : ''}{beo.seating.guests > 0 ? `${num(beo.seating.guests)} ท่าน · ` : ''}ราคาก่อน VAT</span>
       </div>
 
       {/* one compact line: what's missing in the meal */}
-      {template.slots.length > 0 && (beo.lines.length > 0) && (
+      {template.slots.length > 0 && beo.lines.length > 0 && !isRoomService(beo) && (
         <div className="balance">
           {missing.length === 0 ? (
             <span className="dot ok">✓ อาหารครบทุกหมวด ({template.slots.length}/{template.slots.length})</span>

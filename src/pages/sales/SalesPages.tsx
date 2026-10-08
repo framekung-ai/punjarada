@@ -8,6 +8,8 @@ import { money, thaiDate, timeRange, todayIso } from '../../lib/thai'
 import { Empty, errorText, Spinner, StatusBadge } from '../../components/ui'
 import { MonthPicker, monthRange } from '../../components/MonthPicker'
 import { SortTh, useSort } from '../../components/SortTable'
+import { EventTitle } from '../../components/EventTitle'
+import { listLabels } from '../../lib/roomService'
 
 function useMyBeos() {
   const { user } = useAuth()
@@ -26,8 +28,8 @@ export function BeoCard({ b }: { b: Beo }) {
   return (
     <div className="card row" style={{ cursor: 'pointer' }} onClick={() => navigate(`/beo/${b.id}`)}>
       <div className="grow">
-        <div className="row wrap"><strong>{b.event.name || '(ยังไม่มีชื่องาน)'}</strong><StatusBadge status={b.status} /></div>
-        <div className="small muted">{b.customer.name} · {b.event.date ? thaiDate(b.event.date, { short: true }) : 'ยังไม่กำหนดวัน'} · {timeRange(b.event.start, b.event.end)} · {b.event.room}</div>
+        <div className="row wrap"><strong><EventTitle beo={b} /></strong><StatusBadge status={b.status} /></div>
+        <div className="small muted">{listLabels(b).sub} · {b.event.date ? thaiDate(b.event.date, { short: true }) : 'ยังไม่กำหนดวัน'} · {timeRange(b.event.start, b.event.end)} · {listLabels(b).room}</div>
       </div>
       <div className="right">
         <div className="num" style={{ fontWeight: 700 }}>{money(b.totals.grandTotal)}</div>
@@ -57,12 +59,12 @@ export function SalesHome() {
   const rows = useMemo(() => (beos ?? []).filter((b) => {
     if (status !== 'all' && b.status !== status) return false
     const t = q.trim()
-    return !t || [b.customer.name, b.customer.phone, b.event.name, b.docNo ?? '', b.event.room].some((x) => x.includes(t))
+    return !t || [b.customer.name, b.customer.phone, b.event.name, b.docNo ?? '', b.event.room, b.roomNo ?? ''].some((x) => x.includes(t))
   }), [beos, q, status])
   const { sorted, sort, toggle } = useSort<Beo, MyKey>(rows, {
     date: (b) => b.event.date || '9999',
-    name: (b) => b.event.name,
-    customer: (b) => b.customer.name,
+    name: (b) => listLabels(b).title,
+    customer: (b) => listLabels(b).sub,
     status: (b) => STATUS_ORDER[b.status] ?? 9,
     total: (b) => b.totals.grandTotal,
   }, { key: 'date', dir: 'desc' })
@@ -105,10 +107,10 @@ export function SalesHome() {
                     <div className="small muted">{b.docNo ?? 'แบบร่าง'}</div>
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{b.event.name || '(ยังไม่มีชื่องาน)'}</div>
-                    <div className="small muted">{b.event.room}<span className="hide-desktop"> · {b.customer.name}</span></div>
+                    <div style={{ fontWeight: 600 }}><EventTitle beo={b} /></div>
+                    <div className="small muted">{listLabels(b).room}<span className="hide-desktop"> · {listLabels(b).sub}</span></div>
                   </td>
-                  <td className="hide-mobile">{b.customer.name}</td>
+                  <td className="hide-mobile">{listLabels(b).sub}</td>
                   <td className="num hide-mobile">{money(b.totals.grandTotal)}</td>
                   <td>
                     <StatusBadge status={b.status} />
@@ -148,13 +150,13 @@ export function AllDocs() {
   const rows = useMemo(() => (beos ?? []).filter((b) => {
     if (who === 'me' ? b.salesUid !== user?.uid : who !== 'all' && b.salesName !== who) return false
     const t = q.trim()
-    return !t || [b.event.name, b.customer.name, b.docNo ?? '', b.event.room, b.salesName].some((x) => x.includes(t))
+    return !t || [b.event.name, b.customer.name, b.docNo ?? '', b.event.room, b.salesName, b.roomNo ?? ''].some((x) => x.includes(t))
   }), [beos, q, who, user])
   const { sorted, sort, toggle } = useSort<Beo, AllKey>(rows, {
     date: (b) => `${b.event.date} ${b.event.start}`,
-    name: (b) => b.event.name,
+    name: (b) => listLabels(b).title,
     sales: (b) => b.salesName,
-    room: (b) => b.event.room,
+    room: (b) => listLabels(b).room,
   }, { key: 'date', dir: 'asc' })
 
   return (
@@ -190,10 +192,10 @@ export function AllDocs() {
                     <div className="small muted">{timeRange(b.event.start, b.event.end)}</div>
                   </td>
                   <td>
-                    <div style={{ fontWeight: 600 }}>{b.event.name}</div>
-                    <div className="small muted">{b.docNo} · {b.customer.name}<span className="hide-desktop"> · {b.event.room}</span></div>
+                    <div style={{ fontWeight: 600 }}><EventTitle beo={b} /></div>
+                    <div className="small muted">{b.docNo} · {listLabels(b).sub}<span className="hide-desktop"> · {listLabels(b).room}</span></div>
                   </td>
-                  <td className="hide-mobile">{b.event.room}</td>
+                  <td className="hide-mobile">{listLabels(b).room}</td>
                   <td>
                     {b.salesName}
                     {b.salesUid === user?.uid && <span className="badge" style={{ marginLeft: 6 }}>ฉัน</span>}

@@ -26,8 +26,10 @@ export function describeChanges(prev: Snap | undefined, cur: Snap): string[] {
   if (e0.date !== e1.date) out.push(`เลื่อนวันงาน ${thaiDate(e0.date, { short: true })} → ${thaiDate(e1.date, { short: true })}`)
   if (e0.start !== e1.start || e0.end !== e1.end) out.push(`เวลา ${timeRange(e0.start, e0.end)} → ${timeRange(e1.start, e1.end)}`)
   if (e0.room !== e1.room) out.push(`ห้อง ${e0.room || '-'} → ${e1.room || '-'}`)
+  const rsRoom = (prev.roomNo ?? '') !== (cur.roomNo ?? '')
+  if (rsRoom) out.push(`ห้องพัก ${prev.roomNo || '-'} → ${cur.roomNo || '-'}`)
   const c0 = prev.customer, c1 = cur.customer
-  if (c0 && c1 && (c0.name !== c1.name || c0.phone !== c1.phone || c0.organization !== c1.organization || c0.contactName !== c1.contactName || c0.contactPhone !== c1.contactPhone || c0.address !== c1.address)) out.push('แก้ข้อมูลลูกค้า')
+  if (!rsRoom && c0 && c1 && (c0.name !== c1.name || c0.phone !== c1.phone || c0.organization !== c1.organization || c0.contactName !== c1.contactName || c0.contactPhone !== c1.contactPhone || c0.address !== c1.address)) out.push('แก้ข้อมูลลูกค้า')
   const s0 = prev.seating, s1 = cur.seating
   if (s0.guests !== s1.guests) out.push(`แขก ${n(s0.guests)} → ${n(s1.guests)} ท่าน`)
   if (s0.tables !== s1.tables) out.push(`โต๊ะ ${n(s0.tables)} → ${n(s1.tables)}`)

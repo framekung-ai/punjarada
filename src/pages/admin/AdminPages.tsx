@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Route, Routes, useNavigate } from 'react-router-dom'
 import type { Beo } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
-import { Trash2, X } from 'lucide-react'
+import { ConciergeBell, Trash2, X } from 'lucide-react'
 import { deleteBeos, listBeosBetween, listDeleteRequests, listPendingBeos } from '../../lib/db'
 import { addDaysIso, money, num, thaiDate, timeRange, todayIso } from '../../lib/thai'
 import { MonthPicker, monthRange } from '../../components/MonthPicker'
+import { SortTh, useSort } from '../../components/SortTable'
+import { EventTitle } from '../../components/EventTitle'
+import { isRoomService, listLabels } from '../../lib/roomService'
 import { Empty, errorText, Spinner, StatusBadge, useConfirm, useToast } from '../../components/ui'
 import { CategoriesAdmin, MenuAdmin, ServicesAdmin } from './CatalogAdmin'
 import { SetsAdmin } from './SetsAdmin'
@@ -81,10 +84,12 @@ function Dashboard() {
       }
     }
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    const rs = live.filter(isRoomService)
     return {
       total: list.length, live: live.length, drafts: list.filter((b) => b.status === 'draft').length,
       cancelled: list.filter((b) => b.status === 'cancelled').length, revenue, top,
       guests: live.reduce((s, b) => s + (b.seating.guests || 0), 0),
+      rsRevenue: rs.reduce((s, b) => s + b.totals.grandTotal, 0), rsCount: rs.length,
     }
   }, [beos])
   const today = todayIso()
@@ -108,7 +113,7 @@ function Dashboard() {
               {pending.map((b) => (
                 <div key={b.id} className="row between" style={{ cursor: 'pointer' }} onClick={() => navigate(`/beo/${b.id}`)}>
                   <div><strong>{thaiDate(b.event.date, { short: true })}</strong> <span className="small muted">{b.docNo}</span>
-                    <div className="small">{b.event.name} · {b.customer.name} · โดย {b.salesName}</div></div>
+                    <div className="small"><EventTitle beo={b} /> · {listLabels(b).sub} · โดย {b.salesName}</div></div>
                   <span className="btn small">ตรวจ / ยืนยัน</span>
                 </div>
               ))}
@@ -120,17 +125,21 @@ function Dashboard() {
               {delReq.map((b) => (
                 <div key={b.id} className="row between" style={{ cursor: 'pointer' }} onClick={() => navigate(`/beo/${b.id}`)}>
                   <div><strong>{b.docNo}</strong> <span className="small muted">{thaiDate(b.event.date, { short: true })}</span>
-                    <div className="small">{b.event.name} · ขอโดย {b.deleteRequest?.byName}</div></div>
+                    <div className="small"><EventTitle beo={b} /> · ขอโดย {b.deleteRequest?.byName}</div></div>
                   <span className="btn small">พิจารณา</span>
                 </div>
               ))}
             </section>
           )}
           <div className="stat-grid">
-            <div className="card stat"><div className="small muted">รายรับ (ยืนยันแล้ว รวม VAT)</div><div className="v num">{money(stats.revenue)}</div></div>
-            <div className="card stat"><div className="small muted">งานที่ยืนยัน</div><div className="v num">{stats.live}</div></div>
+            {/* งานที่ยืนยันแล้ว / จัดงานแล้ว ของเดือนที่เลือก (รวม Room service) */}
+            <div className="card stat"><div className="small muted">รายรับรวม</div><div className="v num">{money(stats.revenue)}</div></div>
+            <div className="card stat"><div className="small muted">จำนวนงาน</div><div className="v num">{num(stats.live)}</div></div>
+            <div className="card stat">
+              <div className="small muted"><span className="rs-title"><ConciergeBell className="rs-ico" aria-hidden />รายรับ Room service</span></div>
+              <div className="v num">{money(stats.rsRevenue)} <span className="stat-sub">({num(stats.rsCount)} งาน)</span></div>
+            </div>
             <div className="card stat"><div className="small muted">แขกรวม</div><div className="v num">{num(stats.guests)}</div></div>
-            <div className="card stat"><div className="small muted">แบบร่าง / ยกเลิก</div><div className="v num">{stats.drafts} / {stats.cancelled}</div></div>
           </div>
           <div className="grid2">
             <section className="card stack">
@@ -149,8 +158,8 @@ function Dashboard() {
                         <button key={b.id} type="button" className="up-row" onClick={() => navigate(`/beo/${b.id}`)}>
                           <span className="up-time num">{timeRange(b.event.start, b.event.end)}</span>
                           <span className="up-name">
-                            <strong>{b.event.name}</strong>{b.seating.guests > 0 && <span className="muted"> ({num(b.seating.guests)} คน)</span>}
-                            <span className="muted"> · {b.event.room}</span>
+                            <strong><EventTitle beo={b} /></strong>{b.seating.guests > 0 && <span className="muted"> ({num(b.seating.guests)} คน)</span>}
+                            <span className="muted"> · {isRoomService(b) ? `${listLabels(b).room} ${b.roomNo ?? ''}` : b.event.room}</span>
                           </span>
                           <span className="up-amt num">{money(b.totals.grandTotal)}</span>
                         </button>
@@ -171,6 +180,14 @@ function Dashboard() {
   )
 }
 
+type ListKey = 'date' | 'name' | 'room' | 'sales' | 'total' | 'status' | 'updated'
+const STATUS_ORDER: Record<string, number> = { draft: 0, pending: 1, confirmed: 2, completed: 3, cancelled: 4 }
+const tsMs = (v: unknown) => {
+  const t = v as { toMillis?: () => number; toDate?: () => Date } | number | null
+  if (typeof t === 'number') return t
+  return t?.toMillis?.() ?? t?.toDate?.().getTime() ?? 0
+}
+
 function BeoList() {
   const navigate = useNavigate()
   const [ym, setYm] = useState(todayIso().slice(0, 7))
@@ -182,10 +199,25 @@ function BeoList() {
   const [q, setQ] = useState('')
   const [status, setStatus] = useState('all')
   const [sales, setSales] = useState('all')
-  const salesNames = [...new Set((beos ?? []).map((b) => b.salesName))]
-  const list = (beos ?? []).filter((b) => (status === 'all' || b.status === status) && (sales === 'all' || b.salesName === sales)
-    && (!q.trim() || [b.customer.name, b.customer.phone, b.event.name, b.docNo ?? '', b.event.room].some((x) => x.includes(q.trim()))))
-    .sort((a, b) => a.event.date.localeCompare(b.event.date))
+  const salesNames = [...new Set((beos ?? []).map((b) => b.salesName))].sort((a, b) => a.localeCompare(b, 'th'))
+  const filtered = useMemo(() => (beos ?? []).filter((b) => (status === 'all' || b.status === status) && (sales === 'all' || b.salesName === sales)
+    && (!q.trim() || [b.customer.name, b.customer.phone, b.event.name, b.docNo ?? '', b.event.room, b.roomNo ?? '', b.eventType].some((x) => x.includes(q.trim())))), [beos, status, sales, q])
+  const { sorted: list, sort, toggle: sortBy, setSort } = useSort<Beo, ListKey>(filtered, {
+    date: (b) => `${b.event.date} ${b.event.start}`,
+    name: (b) => listLabels(b).title,
+    room: (b) => listLabels(b).room,
+    sales: (b) => b.salesName,
+    total: (b) => b.totals.grandTotal,
+    status: (b) => STATUS_ORDER[b.status] ?? 9,
+    updated: (b) => tsMs(b.updatedAt),
+  }, { key: 'date', dir: 'asc' })
+  // one dropdown: how to sort (default) or one Sales person (all Sales are shown by default)
+  const view = sales !== 'all' ? `s:${sales}` : sort.key === 'updated' ? 'updated' : sort.key === 'date' ? 'date' : 'col'
+  const onView = (v: string) => {
+    if (v === 'date') { setSales('all'); setSort({ key: 'date', dir: 'asc' }) }
+    else if (v === 'updated') { setSales('all'); setSort({ key: 'updated', dir: 'desc' }) }
+    else if (v.startsWith('s:')) setSales(v.slice(2))
+  }
 
   const allShownSelected = list.length > 0 && list.every((b) => selected.has(b.id!))
   const toggle = (k: string) => setSelected((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n })
@@ -250,8 +282,15 @@ function BeoList() {
       </div>
       <div className="row wrap">
         <input className="input grow" style={{ minWidth: 220 }} type="search" placeholder="ค้นหา ลูกค้า / เบอร์ / ชื่องาน / เลขที่ / ห้อง" value={q} onChange={(e) => setQ(e.target.value)} />
-        <select className="input" style={{ width: 'auto' }} value={sales} onChange={(e) => setSales(e.target.value)}>
-          <option value="all">Sales ทุกคน</option>{salesNames.map((n) => <option key={n}>{n}</option>)}
+        <select className="input" style={{ width: 'auto' }} value={view} onChange={(e) => onView(e.target.value)} aria-label="เรียงลำดับ / เลือก Sales">
+          <option value="date">เรียงตามวันที่งาน</option>
+          <option value="updated">เรียงตามการแก้ไข</option>
+          {view === 'col' && <option value="col" disabled>เรียงตามหัวตาราง</option>}
+          {salesNames.length > 0 && (
+            <optgroup label="Sales">
+              {salesNames.map((n) => <option key={n} value={`s:${n}`}>{n}</option>)}
+            </optgroup>
+          )}
         </select>
       </div>
       <div className="chips scroll">
@@ -272,7 +311,12 @@ function BeoList() {
       {!beos ? <Spinner /> : list.length === 0 ? <Empty>ไม่มีเอกสารในเดือนนี้</Empty> : (
         <div className="table-wrap">
           <table className="list">
-            <thead><tr><th className="sel"><input type="checkbox" checked={allShownSelected} onChange={toggleAll} aria-label="เลือกทั้งหมดที่แสดง" /></th><th>วันที่งาน</th><th>ชื่องาน / ลูกค้า</th><th className="hide-mobile">ห้อง</th><th className="hide-mobile">Sales</th><th className="num">รวม</th><th>สถานะ</th></tr></thead>
+            <thead><tr><th className="sel"><input type="checkbox" checked={allShownSelected} onChange={toggleAll} aria-label="เลือกทั้งหมดที่แสดง" /></th><SortTh k="date" sort={sort} onSort={sortBy}>วันที่งาน</SortTh>
+              <SortTh k="name" sort={sort} onSort={sortBy}>ชื่องาน / ลูกค้า</SortTh>
+              <SortTh k="room" sort={sort} onSort={sortBy} className="hide-mobile">ห้อง</SortTh>
+              <SortTh k="sales" sort={sort} onSort={sortBy} className="hide-mobile">Sales</SortTh>
+              <SortTh k="total" sort={sort} onSort={sortBy} className="num">รวม</SortTh>
+              <SortTh k="status" sort={sort} onSort={sortBy}>สถานะ</SortTh></tr></thead>
             <tbody>
               {list.map((b) => (
                 <tr key={b.id} className={`click${selected.has(b.id!) ? ' selected' : ''}`} onClick={() => navigate(`/beo/${b.id}`)}>
@@ -280,8 +324,8 @@ function BeoList() {
                     <input type="checkbox" checked={selected.has(b.id!)} onChange={() => toggle(b.id!)} aria-label={`เลือก ${b.docNo ?? b.event.name}`} />
                   </td>
                   <td><div>{thaiDate(b.event.date, { short: true })}</div><div className="small muted">{b.docNo ?? '-'}</div></td>
-                  <td><div style={{ fontWeight: 600 }}>{b.event.name}</div><div className="small muted">{b.customer.name}</div></td>
-                  <td className="hide-mobile">{b.event.room}</td>
+                  <td><div style={{ fontWeight: 600 }}><EventTitle beo={b} /></div><div className="small muted">{listLabels(b).sub}</div></td>
+                  <td className="hide-mobile">{listLabels(b).room}</td>
                   <td className="hide-mobile">{b.salesName}</td>
                   <td className="num">{money(b.totals.grandTotal)}</td>
                   <td><StatusBadge status={b.status} />{b.deleteRequest && <div><span className="badge req-del" style={{ marginTop: 4 }}>ขอลบ</span></div>}</td>

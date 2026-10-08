@@ -19,7 +19,7 @@ export function useSort<T, K extends string>(rows: T[], getters: Record<K, (r: T
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, sort])
   const toggle = (key: K) => setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }))
-  return { sorted, sort, toggle }
+  return { sorted, sort, toggle, setSort }
 }
 
 /** Table header cell with a small up/down arrow that shows the column can be sorted. */

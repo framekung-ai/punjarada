@@ -275,6 +275,8 @@ export interface Beo {
   terms: string[]
   note: string
   totals: BeoTotals
+  /** Room service: เลขห้องพัก (ลูกค้า = “ห้อง {roomNo}”, ห้อง = ห้องพัก, วันที่/เวลา = ที่สั่ง) */
+  roomNo?: string
   /** ผู้รับงาน (ผู้สร้าง) — ไม่เปลี่ยนเมื่อคนอื่นแก้ไข */
   salesUid: string
   salesName: string

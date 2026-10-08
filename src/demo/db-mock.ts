@@ -4,6 +4,7 @@ import seed from '../seed/seed.json'
 import type { AppUser, Beo, Catalog, CustomerRecord, Settings } from '../lib/types'
 import { buddhistYear } from '../lib/thai'
 import { approverAfterSave } from '../lib/approver'
+import { isRoomService } from '../lib/roomService'
 
 export const CATALOG_COLLECTIONS = ['categories', 'menuItems', 'menuSets', 'services', 'focRules'] as const
 export type CatalogCollection = (typeof CATALOG_COLLECTIONS)[number]
@@ -115,7 +116,7 @@ export async function submitBeo(id: string | undefined, b: Beo, actor: { uid: st
   saved._rev = [...(cur?._rev ?? []), { ...plain(b), docNo, revision, status, action, prevStatus: cs ?? 'new', savedBy: actor.uid, savedByName: actor.name, savedAt: Date.now() } as unknown as Beo]
   store.beos[bid] = saved
   const k = phoneKey(b.customer.phone)
-  if (k.length >= 9 && k.length <= 10 && !wasSubmitted) store.customers[k] = { ...b.customer, phone: k, beoCount: (store.customers[k]?.beoCount ?? 0) + 1, updatedAt: Date.now() as never }
+  if (k.length >= 9 && k.length <= 10 && !wasSubmitted && !isRoomService(b)) store.customers[k] = { ...b.customer, phone: k, beoCount: (store.customers[k]?.beoCount ?? 0) + 1, updatedAt: Date.now() as never }
   persist()
   return { id: bid, docNo, status }
 }

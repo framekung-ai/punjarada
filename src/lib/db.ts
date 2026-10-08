@@ -10,6 +10,7 @@ import type {
 } from './types'
 import { buddhistYear } from './thai'
 import { approverAfterSave } from './approver'
+import { isRoomService } from './roomService'
 
 // ---------------- Catalog (menu, sets, services, FOC, settings) ----------------
 // Quota saver: the whole catalog (~170 docs) is cached in localStorage together with
@@ -242,7 +243,8 @@ export async function submitBeo(
     let docNo = (current?.data()?.docNo as string | null) ?? b.docNo
     const custKey = phoneKey(b.customer.phone)
     // customer directory is keyed by 9–10 digit Thai numbers (see firestore.rules); other numbers are kept on the BEO only
-    const custRef = custKey.length >= 9 && custKey.length <= 10 ? doc(db, 'customers', custKey) : null
+    // Room service uses the hotel's own number → not a customer
+    const custRef = custKey.length >= 9 && custKey.length <= 10 && !isRoomService(b) ? doc(db, 'customers', custKey) : null
     const cust = custRef ? await tx.get(custRef) : null
     if (!docNo) {
       const year = buddhistYear(b.event.date || undefined)

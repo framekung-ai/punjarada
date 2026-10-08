@@ -2,6 +2,7 @@ import { forwardRef } from 'react'
 import type { Beo, BeoLine, Settings } from '../lib/types'
 import { discountLabel, lineAmount } from '../lib/pricing'
 import { lineName } from '../lib/cuisine'
+import { GUEST_ROOM, isRoomService } from '../lib/roomService'
 import { bahtText, money, num, phoneFormat, thaiDate, timeRange, todayIso } from '../lib/thai'
 import './beo-document.css'
 
@@ -42,6 +43,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
   const freeValue = beo.totals.freeValue ?? 0
   const freeCount = beo.lines.filter((l) => l.free && l.kind !== 'foc').length
   const ruleDiscount = beo.totals.ruleDiscount ?? Math.max(0, beo.totals.discount - freeValue)
+  const rs = isRoomService(beo)
   const numbering = new Map([...food, ...services, ...foc].map((l, i) => [l.key, i + 1]))
 
   const lineRow = (l: BeoLine, amount = true) => {
@@ -86,32 +88,60 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
 
       <div className="bd-title">Banquet Event Order (BEO) / Function Sheet / รายละเอียดการจัดงาน</div>
 
+      {rs ? (
+        // Room service: room number + order date/time; no organisation / address / coordinator / tables
+        <>
+          <section className="bd-info">
+            <div className="bd-col">
+              <div className="bd-colhead">ข้อมูลลูกค้า</div>
+              <Row label="ชื่อลูกค้า" value={beo.customer.name} />
+              <Row label="ห้องพัก" value={beo.roomNo} />
+              <Row label="โทรศัพท์" value={beo.customer.phone ? phoneFormat(beo.customer.phone) : ''} />
+            </div>
+            <div className="bd-col">
+              <div className="bd-colhead">ข้อมูลการสั่ง</div>
+              <Row label="ประเภทงาน" value={beo.eventType} />
+              <Row label="วันที่สั่ง" value={thaiDate(beo.event.date, { weekday: true })} />
+              <Row label="เวลาที่สั่ง" value={beo.event.start ? `${beo.event.start.replace(':', '.')} น.` : ''} />
+              {s.guests > 0 && <Row label="จำนวน" value={`${num(s.guests)} ท่าน`} />}
+            </div>
+          </section>
+          <section className="bd-venue">
+            <div><span>ห้อง</span><b>{GUEST_ROOM} {beo.roomNo}</b></div>
+            <div><span>บริการ</span><b>{beo.eventType}</b></div>
+            <div><span>จำนวน</span><b>{s.guests > 0 ? `${num(s.guests)} ท่าน` : '-'}</b></div>
+          </section>
+        </>
+      ) : (
+      <>
       <section className="bd-info">
-        <div className="bd-col">
-          <div className="bd-colhead">ข้อมูลลูกค้า</div>
-          <Row label="ชื่อลูกค้า" value={beo.customer.name} />
-          <Row label="หน่วยงาน" value={beo.customer.organization} />
-          <Row label="โทรศัพท์" value={beo.customer.phone ? phoneFormat(beo.customer.phone) : ''} />
-          <Row label="ที่อยู่" value={beo.customer.address} />
-          {(beo.customer.contactName || beo.customer.contactPhone) && (
-            <Row label="ผู้ประสานงาน" value={[beo.customer.contactName, beo.customer.contactPhone && phoneFormat(beo.customer.contactPhone)].filter(Boolean).join(' · ')} />
-          )}
-        </div>
-        <div className="bd-col">
-          <div className="bd-colhead">ข้อมูลกิจกรรม</div>
-          <Row label="ชื่องาน" value={beo.event.name} />
-          <Row label="ประเภทงาน" value={beo.eventType} />
-          <Row label="วันที่จัดงาน" value={thaiDate(beo.event.date, { weekday: true })} />
-          <Row label="เวลา" value={timeRange(beo.event.start, beo.event.end)} />
-          <Row label="จำนวนแขก" value={s.guests ? `${num(s.guests)} ท่าน` : ''} />
-        </div>
-      </section>
-
-      <section className="bd-venue">
-        <div><span>ห้อง</span><b>{beo.event.room || '-'}</b></div>
-        <div><span>รูปแบบ</span><b>{s.layout || '-'}</b></div>
-        <div><span>จำนวนโต๊ะ</span><b>{seatText || '-'}</b></div>
-      </section>
+          <div className="bd-col">
+            <div className="bd-colhead">ข้อมูลลูกค้า</div>
+            <Row label="ชื่อลูกค้า" value={beo.customer.name} />
+            <Row label="หน่วยงาน" value={beo.customer.organization} />
+            <Row label="โทรศัพท์" value={beo.customer.phone ? phoneFormat(beo.customer.phone) : ''} />
+            <Row label="ที่อยู่" value={beo.customer.address} />
+            {(beo.customer.contactName || beo.customer.contactPhone) && (
+              <Row label="ผู้ประสานงาน" value={[beo.customer.contactName, beo.customer.contactPhone && phoneFormat(beo.customer.contactPhone)].filter(Boolean).join(' · ')} />
+            )}
+          </div>
+          <div className="bd-col">
+            <div className="bd-colhead">ข้อมูลกิจกรรม</div>
+            <Row label="ชื่องาน" value={beo.event.name} />
+            <Row label="ประเภทงาน" value={beo.eventType} />
+            <Row label="วันที่จัดงาน" value={thaiDate(beo.event.date, { weekday: true })} />
+            <Row label="เวลา" value={timeRange(beo.event.start, beo.event.end)} />
+            <Row label="จำนวนแขก" value={s.guests ? `${num(s.guests)} ท่าน` : ''} />
+          </div>
+        </section>
+  
+        <section className="bd-venue">
+          <div><span>ห้อง</span><b>{beo.event.room || '-'}</b></div>
+          <div><span>รูปแบบ</span><b>{s.layout || '-'}</b></div>
+          <div><span>จำนวนโต๊ะ</span><b>{seatText || '-'}</b></div>
+        </section>
+      </>
+      )}
 
       <table className="bd-table">
         <thead>

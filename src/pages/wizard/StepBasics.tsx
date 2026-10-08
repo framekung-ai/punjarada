@@ -6,6 +6,7 @@ import { bookingsOnDate, findCustomer, type Booking } from '../../lib/db'
 import { phoneFormat, thaiDate } from '../../lib/thai'
 import type { StepErrors } from './model'
 import { LayoutIcon, TypeIcon } from './icons'
+import { fromRoomService, isRoomService, isRoomServiceType, toRoomService } from '../../lib/roomService'
 
 export interface StepProps {
   beo: Beo
@@ -38,15 +39,20 @@ export function StepType({ beo, setBeo, catalog, errors }: StepProps) {
         {types.map((t) => {
           const on = t === 'อื่นๆ' ? isOther : beo.eventType === t
           return (
-            <button key={t} type="button" className={`choice${on ? ' on' : ''}`} onClick={() => setBeo((b) => ({
-              ...b,
-              eventType: t === 'อื่นๆ' ? (other || 'อื่นๆ') : t,
-              seating: {
-                ...b.seating,
-                layout: b.seating.layout || pickLayout(catalog.settings.tableLayouts, t),
-              },
-              event: { ...b.event, room: b.event.room || (isOffsite(t) ? 'นอกสถานที่' : '') },
-            }))}>
+            <button key={t} type="button" className={`choice${on ? ' on' : ''}`} onClick={() => setBeo((b) => {
+              // Room service: room no. + order time only — customer, event name and room are filled automatically
+              if (isRoomServiceType(t)) return toRoomService(b, t, catalog.settings)
+              const base = isRoomService(b) ? fromRoomService(b, t, catalog.settings) : b
+              return {
+                ...base,
+                eventType: t === 'อื่นๆ' ? (other || 'อื่นๆ') : t,
+                seating: {
+                  ...base.seating,
+                  layout: base.seating.layout || pickLayout(catalog.settings.tableLayouts, t),
+                },
+                event: { ...base.event, room: base.event.room || (isOffsite(t) ? 'นอกสถานที่' : '') },
+              }
+            })}>
               <span className="ico"><TypeIcon name={t} /></span>
               <strong>{t}</strong>
             </button>

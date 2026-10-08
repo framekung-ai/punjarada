@@ -1,8 +1,17 @@
 import type { AppUser, Beo, BeoLine, Catalog, Cuisine, MealTemplate, MenuItem, MenuSet, Service } from '../../lib/types'
 import { newKey } from '../../lib/pricing'
 import { mainCuisine, setCuisine, THAI_TEMPLATE } from '../../lib/cuisine'
+import { isRoomService } from '../../lib/roomService'
 
-export const STEPS = ['ประเภทงาน', 'ลูกค้า', 'รายละเอียดงาน', 'แขกและโต๊ะ', 'อาหารและบริการ', 'สรุปและยืนยัน'] as const
+/** step ids: 0 ประเภทงาน · 1 ลูกค้า · 2 รายละเอียดงาน · 3 แขกและโต๊ะ · 4 อาหาร · 5 สรุป · 6 Room service (ห้อง + วัน/เวลาที่สั่ง) */
+export const STEPS = ['ประเภทงาน', 'ลูกค้า', 'รายละเอียดงาน', 'แขกและโต๊ะ', 'อาหารและบริการ', 'สรุปและยืนยัน', 'ห้องพักและเวลาที่สั่ง'] as const
+export const STEP_ROOM_SERVICE = 6
+const FULL_FLOW = [0, 1, 2, 3, 4, 5]
+/** Room service: no customer / event name / banquet room / tables — one page for room no. + order date/time */
+const ROOM_SERVICE_FLOW = [0, STEP_ROOM_SERVICE, 4, 5]
+export function flowFor(b: Pick<Beo, 'eventType'>): number[] {
+  return isRoomService(b) ? ROOM_SERVICE_FLOW : FULL_FLOW
+}
 
 export function emptyBeo(user: AppUser): Beo {
   return {
@@ -22,6 +31,7 @@ export function copyAsNew(src: Beo, user: AppUser): Beo {
   return {
     ...b,
     eventType: src.eventType,
+    ...(src.roomNo !== undefined ? { roomNo: src.roomNo } : {}),
     customer: { ...src.customer },
     event: { ...src.event, date: '' },
     seating: { ...src.seating },
@@ -54,6 +64,11 @@ export function validateStep(step: number, b: Beo): StepErrors {
     if (!b.seating.layout) e.layout = 'เลือกรูปแบบการจัดโต๊ะ'
   }
   if (step === 4 && b.lines.filter((l) => l.kind !== 'foc').length === 0) e.lines = 'เพิ่มอาหารหรือบริการอย่างน้อย 1 รายการ'
+  if (step === STEP_ROOM_SERVICE) {
+    if (!(b.roomNo ?? '').trim()) e.roomNo = 'กรอกเลขห้องพัก'
+    if (!b.event.date) e.date = 'เลือกวันที่สั่ง'
+    if (!b.event.start) e.start = 'ระบุเวลาที่สั่ง'
+  }
   return e
 }
 

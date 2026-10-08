@@ -14,6 +14,8 @@ import { errorText, Sheet, Spinner, StatusBadge, useToast, useConfirm } from '..
 import { money, thaiDate } from '../lib/thai'
 import { canEditBeo, editWarning } from './editGuard'
 import { changesForHistory } from '../lib/revisionDiff'
+import { EventTitle } from '../components/EventTitle'
+import { isRoomService } from '../lib/roomService'
 
 const ACTION_LABEL: Record<string, string> = {
   submit: 'ส่งให้ Admin ยืนยัน', edit: 'แก้ไข', confirm: 'ยืนยันงาน', status: 'เปลี่ยนสถานะ',
@@ -130,7 +132,7 @@ export function BeoView() {
       <div className="page-head">
         <div>
           <div className="row wrap"><h1>{beo.docNo ?? 'แบบร่าง'}</h1><StatusBadge status={beo.status} />{beo.revision > 0 && <span className="badge gray">Rev.{beo.revision}</span>}{beo.deleteRequest && <span className="badge req-del">ขอลบ</span>}</div>
-          <div className="muted small">{beo.event.name} · {thaiDate(beo.event.date)} · {money(beo.totals.grandTotal)} บาท</div>
+          <div className="muted small"><EventTitle beo={beo} />{isRoomService(beo) ? ` · ห้อง ${beo.roomNo ?? ''}` : ''} · {thaiDate(beo.event.date)} · {money(beo.totals.grandTotal)} บาท</div>
           <div className="edited-by">
             ผู้รับงาน <strong>{beo.salesName}</strong>
             {edited && <> · แก้ไขล่าสุดโดย <strong>{beo.editedByName}</strong></>}

@@ -8,7 +8,9 @@ import { submitBeo, createBeo, findCustomer, getBeo, updateBeo } from '../../lib
 import { money } from '../../lib/thai'
 import { errorText, Spinner, useConfirm, useToast } from '../../components/ui'
 import { canEditBeo, editWarning } from '../editGuard'
-import { copyAsNew, emptyBeo, STEPS, validateStep, type StepErrors } from './model'
+import { copyAsNew, emptyBeo, flowFor, STEP_ROOM_SERVICE, STEPS, validateStep, type StepErrors } from './model'
+import { StepRoomService } from './StepRoomService'
+import { isRoomService } from '../../lib/roomService'
 import { StepCustomer, StepEvent, StepSeating, StepType } from './StepBasics'
 import { StepFood } from './StepFood'
 import { StepConfirm } from './StepConfirm'
@@ -25,7 +27,8 @@ export function Wizard() {
 
   const [beo, setBeoRaw] = useState<Beo | null>(id ? null : null)
   const [beoId, setBeoId] = useState<string | undefined>(id)
-  const [step, setStep] = useState(0)
+  /** position in the flow (the flow differs for Room service) */
+  const [pos, setPos] = useState(0)
   const [errors, setErrors] = useState<StepErrors>({})
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -47,13 +50,14 @@ export function Wizard() {
         const warn = acked ? null : editWarning(b, user)
         if (warn && !(await confirmModal(warn))) { navigate(`/beo/${id}`, { replace: true }); return }
         setBeoRaw(b)
-        setStep(b.lines.length ? 4 : 1)
+        setPos(Math.max(0, flowFor(b).indexOf(b.lines.length ? 4 : isRoomService(b) ? STEP_ROOM_SERVICE : 1)))
         findCustomer(b.customer.phone).then((c) => setRegular(!!c && c.beoCount > 0)).catch(() => {})
       }).catch((e) => setLoadErr(errorText(e)))
     } else {
       const copy = (location.state as { copyFrom?: Beo } | null)?.copyFrom
-      setBeoRaw(copy ? copyAsNew(copy, user) : emptyBeo(user))
-      if (copy) setStep(2)
+      const start = copy ? copyAsNew(copy, user) : emptyBeo(user)
+      setBeoRaw(start)
+      if (copy) setPos(flowFor(start).indexOf(isRoomService(start) ? STEP_ROOM_SERVICE : 2))
     }
     return () => { alive = false }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,6 +79,10 @@ export function Wizard() {
   if (!beo || !pricedBeo || !priced || !user) return <Spinner />
 
   const isDraft = beo.status === 'draft'
+  const flow = flowFor(beo)
+  const curPos = Math.min(pos, flow.length - 1)
+  const step = flow[curPos] // step id (see STEPS)
+  const last = curPos === flow.length - 1
   const reapproval = !isAdmin && beo.status === 'confirmed'
   const othersWork = !!beo.id && beo.salesUid !== user.uid
   const stamped = (b: Beo): Beo => ({ ...b, editedByUid: user.uid, editedByName: user.displayName })
@@ -105,23 +113,23 @@ export function Wizard() {
   }
 
   const go = async (to: number) => {
-    if (to > step) {
-      for (let s = step; s < to; s++) {
-        const e = validateStep(s, pricedBeo)
-        if (Object.keys(e).length) { setErrors(e); setStep(s); window.scrollTo({ top: 0 }); return }
+    if (to > pos) {
+      for (let p = pos; p < to; p++) {
+        const e = validateStep(flow[p], pricedBeo)
+        if (Object.keys(e).length) { setErrors(e); setPos(p); window.scrollTo({ top: 0 }); return }
       }
     }
     setErrors({})
-    setStep(to)
+    setPos(to)
     window.scrollTo({ top: 0 })
     // auto-save drafts when moving on (only after customer is known, only if something changed)
-    if (dirty && step >= 1 && isDraft) void saveDraft(true)
+    if (dirty && pos >= 1 && isDraft) void saveDraft(true)
   }
 
   const confirm = async () => {
-    for (let s = 0; s < 5; s++) {
-      const e = validateStep(s, pricedBeo)
-      if (Object.keys(e).length) { setErrors(e); setStep(s); toast('กรอกข้อมูลให้ครบก่อนยืนยัน'); return }
+    for (let p = 0; p < flow.length - 1; p++) {
+      const e = validateStep(flow[p], pricedBeo)
+      if (Object.keys(e).length) { setErrors(e); setPos(p); toast('กรอกข้อมูลให้ครบก่อนยืนยัน'); return }
     }
     setSaving(true)
     try {
@@ -147,7 +155,7 @@ export function Wizard() {
       <div className="row between">
         <div>
           <div className="small muted">
-            {beo.docNo ? `${beo.docNo}${beo.revision ? ` · Rev.${beo.revision}` : ''}` : 'BEO ใหม่'} · ขั้นที่ {step + 1}/{STEPS.length}
+            {beo.docNo ? `${beo.docNo}${beo.revision ? ` · Rev.${beo.revision}` : ''}` : 'BEO ใหม่'} · ขั้นที่ {curPos + 1}/{flow.length}
           </div>
           <h1>{STEPS[step]}</h1>
         </div>
@@ -156,8 +164,8 @@ export function Wizard() {
         )}
       </div>
       <div className="wiz-progress">
-        {STEPS.map((s, i) => (
-          <span key={s} className={i < step ? 'done' : i === step ? 'cur' : ''} title={s} role="button" onClick={() => (i < step ? void go(i) : undefined)} />
+        {flow.map((sid, i) => (
+          <span key={sid} className={i < curPos ? 'done' : i === curPos ? 'cur' : ''} title={STEPS[sid]} role="button" onClick={() => (i < curPos ? void go(i) : undefined)} />
         ))}
       </div>
 
@@ -173,6 +181,7 @@ export function Wizard() {
       {step === 1 && <StepCustomer {...stepProps} onRegular={setRegular} />}
       {step === 2 && <StepEvent {...stepProps} />}
       {step === 3 && <StepSeating {...stepProps} />}
+      {step === STEP_ROOM_SERVICE && <StepRoomService {...stepProps} />}
       {step === 4 && (
         <>
           <StepFood beo={beo} catalog={catalog} priced={priced} updateLines={updateLines} isRegular={isRegular}
@@ -184,8 +193,8 @@ export function Wizard() {
 
       <div className="wiz-foot">
         <div className="inner">
-          {step > 0 && <button className="btn" onClick={() => void go(step - 1)}>ย้อนกลับ</button>}
-          {step >= 4 ? (
+          {curPos > 0 && <button className="btn" onClick={() => void go(curPos - 1)}>ย้อนกลับ</button>}
+          {step === 4 || step === 5 ? (
             <button className="cartbar" onClick={() => { if (step === 4) setCartOpen(true) }}>
               <div className="grow">
                 <div className="small muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lineCount} รายการ · {step === 4 ? 'ก่อน VAT' : beo.applyVat === false ? 'ไม่คิด VAT' : 'รวม VAT 7%'}{priced.lines.some((l) => l.kind === 'foc') ? ' · มีของแถม' : ''}</div>
@@ -193,8 +202,8 @@ export function Wizard() {
               </div>
             </button>
           ) : <div className="grow" />}
-          {step < 5
-            ? <button className="btn primary" onClick={() => void go(step + 1)}>ถัดไป</button>
+          {!last
+            ? <button className="btn primary" onClick={() => void go(curPos + 1)}>ถัดไป</button>
             : <button className="btn primary" disabled={saving} onClick={() => void confirm()}>{saving ? 'กำลังบันทึก…' : submitLabel}</button>}
         </div>
       </div>

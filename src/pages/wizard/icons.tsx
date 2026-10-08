@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import {
-  Award, BriefcaseBusiness, CalendarDays, GraduationCap, HandPlatter, Heart, Presentation, Sparkles, Truck, UtensilsCrossed, Wine,
+  Award, BriefcaseBusiness, ConciergeBell, CalendarDays, GraduationCap, HandPlatter, Heart, Presentation, Sparkles, Truck, UtensilsCrossed, Wine,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -9,6 +9,7 @@ import {
  * rather than by exact name — any unknown type still gets a tidy calendar icon.
  */
 const TYPE_RULES: [RegExp, LucideIcon][] = [
+  [/room\s*-?\s*service|รูมเซอร์วิส/i, ConciergeBell],
   [/นอกสถานที่|ส่งอาหาร|จัดส่ง|delivery|catering/i, Truck],
   [/ประชุม|สัมมนา|meeting|seminar/i, Presentation],
   [/อบรม|รุ่น|ปฐมนิเทศ|training/i, GraduationCap],
