@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { BadgePercent, CheckCircle2, History, Pencil, Trash2 } from 'lucide-react'
 import type { Beo } from '../lib/types'
-import { deleteBeo, getBeo, listRevisions, requestDeleteBeo, setBeoStatus, submitBeo, type Revision } from '../lib/db'
+import { deleteBeo, getBeo, listRevisions, recountCustomers, requestDeleteBeo, setBeoStatus, submitBeo, type Revision } from '../lib/db'
 import { priceBeo } from '../lib/pricing'
 import { DiscountSheet, type DiscountResult } from './DiscountSheet'
 import { useAuth } from '../lib/auth'
@@ -107,7 +107,11 @@ export function BeoView() {
       confirmText: 'ลบถาวร', danger: true,
     })
     if (!ok) return
-    try { await deleteBeo(id); toast('ลบแล้ว'); navigate(home, { replace: true }) } catch (e) { toast(errorText(e)) }
+    try {
+      await deleteBeo(id)
+      void recountCustomers([beo.customer.phone]).catch(() => {}) // keep the customer's job count right
+      toast('ลบแล้ว'); navigate(home, { replace: true })
+    } catch (e) { toast(errorText(e)) }
   }
 
   const askDelete = async () => {

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Phone, Trash2, X } from 'lucide-react'
+import { Pencil, Phone, RefreshCw, Trash2, X } from 'lucide-react'
 import type { Beo, CustomerRecord } from '../../lib/types'
-import { deleteCustomers, listBeosByPhone, listCustomers } from '../../lib/db'
+import { deleteCustomers, findCustomer, listBeosByPhone, listCustomers, recountAllCustomers, recountCustomers, updateCustomer } from '../../lib/db'
+import { jobCounts, phoneDigits, validCustomerPhone } from '../../lib/customers'
+import { EventTitle } from '../../components/EventTitle'
 import { money, phoneFormat, thaiDate } from '../../lib/thai'
-import { Empty, errorText, Sheet, Spinner, StatusBadge, useConfirm, useToast } from '../../components/ui'
+import { Empty, errorText, Field, Sheet, Spinner, StatusBadge, useConfirm, useToast } from '../../components/ui'
 
 const keyOf = (c: CustomerRecord) => c.id ?? c.phone
 
@@ -20,8 +22,22 @@ export function CustomersAdmin() {
   const [open, setOpen] = useState<CustomerRecord | null>(null)
   const [beos, setBeos] = useState<Beo[] | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [editing, setEditing] = useState<{ name: string; phone: string; organization: string; syncBeos: boolean } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [recounting, setRecounting] = useState(false)
 
-  useEffect(() => { listCustomers().then(setList).catch((e) => setErr(errorText(e))) }, [])
+  const reloadList = () => listCustomers().then(setList).catch((e) => setErr(errorText(e)))
+  useEffect(() => { void reloadList() }, [])
+
+  /** Admin: fix every customer's job count from the BEOs that really exist */
+  const recountAll = async () => {
+    setRecounting(true)
+    try {
+      const n = await recountAllCustomers()
+      await reloadList()
+      toast(n ? `แก้จำนวนงานให้ถูกต้องแล้ว ${n} ราย` : 'จำนวนงานถูกต้องทุกรายแล้ว')
+    } catch (e) { toast(errorText(e)) } finally { setRecounting(false) }
+  }
 
   const shown = useMemo(() => {
     const t = q.trim().toLowerCase()
@@ -44,8 +60,48 @@ export function CustomersAdmin() {
 
   const openCustomer = (c: CustomerRecord) => {
     setOpen(c)
+    setEditing(null)
     setBeos(null)
-    listBeosByPhone(c.phone).then(setBeos).catch(() => setBeos([]))
+    listBeosByPhone(c.phone).then((bs) => {
+      setBeos(bs)
+      // the stored count can be out of date (e.g. a BEO was deleted) → correct it from the real BEOs
+      const n = jobCounts(bs).get(phoneDigits(c.phone)) ?? 0
+      if (n !== c.beoCount) {
+        void recountCustomers([c.phone]).catch(() => {})
+        setList((l) => (l ?? []).map((x) => (keyOf(x) === keyOf(c) ? { ...x, beoCount: n } : x)))
+        setOpen((o) => (o && keyOf(o) === keyOf(c) ? { ...o, beoCount: n } : o))
+      }
+    }).catch(() => setBeos([]))
+  }
+
+  const startEdit = () => open && setEditing({ name: open.name, phone: phoneDigits(open.phone), organization: open.organization ?? '', syncBeos: true })
+
+  const saveEdit = async () => {
+    if (!open || !editing) return
+    const name = editing.name.trim()
+    const phone = phoneDigits(editing.phone)
+    if (!name) { toast('กรอกชื่อลูกค้า'); return }
+    if (!validCustomerPhone(phone)) { toast('เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก'); return }
+    const oldId = keyOf(open)
+    if (phone !== oldId) {
+      const other = await findCustomer(phone).catch(() => null)
+      if (other && !(await confirm({
+        title: 'เบอร์นี้มีในรายชื่อลูกค้าแล้ว',
+        message: `${phoneFormat(phone)} เป็นของ “${other.name}” — ถ้าบันทึก จะรวมเป็นลูกค้ารายเดียวกันโดยใช้ชื่อ “${name}”`,
+        confirmText: 'รวมเป็นรายเดียวกัน',
+      }))) return
+    }
+    setSaving(true)
+    try {
+      const ids = editing.syncBeos ? (beos ?? []).map((b) => b.id!).filter(Boolean) : []
+      const newId = await updateCustomer(oldId, { name, phone, organization: editing.organization }, ids)
+      const fresh = await listCustomers()
+      setList(fresh)
+      const now = fresh.find((x) => keyOf(x) === newId) ?? null
+      setEditing(null)
+      if (now) openCustomer(now); else setOpen(null)
+      toast(ids.length ? `บันทึกแล้ว — อัปเดตเอกสาร BEO ${ids.length} ใบด้วย` : 'บันทึกข้อมูลลูกค้าแล้ว')
+    } catch (e) { toast(`บันทึกไม่สำเร็จ: ${errorText(e)}`) } finally { setSaving(false) }
   }
 
   /** delete one or many customers (directory only — BEO documents stay) */
@@ -91,7 +147,12 @@ export function CustomersAdmin() {
 
   return (
     <div className="stack">
-      <div className="page-head"><h1>ลูกค้า <span className="small muted">({list?.length ?? 0})</span></h1></div>
+      <div className="page-head">
+        <h1>ลูกค้า <span className="small muted">({list?.length ?? 0})</span></h1>
+        <button className="btn small" disabled={recounting || !list} onClick={() => void recountAll()} title="นับจำนวนงานของลูกค้าทุกรายใหม่จากเอกสาร BEO ที่มีอยู่จริง">
+          <RefreshCw size={16} aria-hidden className={recounting ? 'spin' : undefined} /> {recounting ? 'กำลังนับ…' : 'นับจำนวนงานใหม่'}
+        </button>
+      </div>
       <input className="input" type="search" placeholder="ค้นหา ชื่อลูกค้า / เบอร์โทร / หน่วยงาน / ผู้ประสานงาน" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
 
       {selected.size > 0 && (
@@ -133,13 +194,41 @@ export function CustomersAdmin() {
       )}
       <div className="small muted">ติ๊กช่องหน้าชื่อเพื่อเลือกหลายรายการ · ติ๊กช่องบนหัวตารางเพื่อเลือกทั้งหมดที่แสดงอยู่ (ใช้ร่วมกับช่องค้นหาได้)</div>
 
-      <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.name}
-        footer={open && (
-          <button className="btn danger" disabled={deleting} onClick={() => void remove([open])}>
-            <Trash2 size={17} aria-hidden /> {deleting ? 'กำลังลบ…' : 'ลบข้อมูลลูกค้า'}
-          </button>
-        )}>
-        {open && (
+      <Sheet open={!!open} onClose={() => { setOpen(null); setEditing(null) }} title={editing ? 'แก้ไขข้อมูลลูกค้า' : open?.name}
+        footer={open && (editing ? (
+          <div className="row">
+            <button className="btn" disabled={saving} onClick={() => setEditing(null)}>ยกเลิก</button>
+            <button className="btn primary grow" disabled={saving} onClick={() => void saveEdit()}>{saving ? 'กำลังบันทึก…' : 'บันทึก'}</button>
+          </div>
+        ) : (
+          <div className="row">
+            <button className="btn danger" disabled={deleting} onClick={() => void remove([open])}>
+              <Trash2 size={17} aria-hidden /> {deleting ? 'กำลังลบ…' : 'ลบข้อมูลลูกค้า'}
+            </button>
+            <button className="btn primary" style={{ marginLeft: 'auto' }} onClick={startEdit}><Pencil size={17} aria-hidden /> แก้ไข</button>
+          </div>
+        ))}>
+        {open && editing && (
+          <div className="stack">
+            <Field label="ชื่อลูกค้า" required>
+              <input className="input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} autoFocus />
+            </Field>
+            <Field label="เบอร์โทรศัพท์" required hint="ใส่เฉพาะตัวเลข 9–10 หลัก — ระบบเว้นขีดให้เอง">
+              <input className="input" inputMode="tel" value={phoneFormat(editing.phone)} onChange={(e) => setEditing({ ...editing, phone: e.target.value.replace(/\D/g, '') })} />
+            </Field>
+            <Field label="หน่วยงาน / บริษัท">
+              <input className="input" value={editing.organization} onChange={(e) => setEditing({ ...editing, organization: e.target.value })} />
+            </Field>
+            {(beos?.length ?? 0) > 0 && (
+              <label className="row small" style={{ gap: 8, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={editing.syncBeos} onChange={(e) => setEditing({ ...editing, syncBeos: e.target.checked })} style={{ marginTop: 3 }} />
+                <span>อัปเดตชื่อ เบอร์ และหน่วยงานในเอกสาร BEO เดิมของลูกค้านี้ด้วย ({beos!.length} ใบ)
+                  <span className="muted"> — ถ้าไม่เลือก เอกสารเดิมจะยังเป็นข้อมูลเก่า และถ้าเปลี่ยนเบอร์ จะไม่นับเป็นงานของลูกค้านี้</span></span>
+              </label>
+            )}
+          </div>
+        )}
+        {open && !editing && (
           <>
             <div className="stack" style={{ gap: 4 }}>
               {open.organization && <div>{open.organization}</div>}
@@ -149,11 +238,11 @@ export function CustomersAdmin() {
                 {open.contactPhone && <a className="btn" href={tel(open.contactPhone)}><Phone size={18} aria-hidden /> {open.contactName || 'ผู้ประสานงาน'} {phoneFormat(open.contactPhone)}</a>}
               </div>
             </div>
-            <strong>งานของลูกค้า</strong>
+            <strong>งานของลูกค้า {beos && <span className="muted small">({jobCounts(beos).get(phoneDigits(open.phone)) ?? 0} งาน{beos.some((b) => b.status === 'draft') ? ` · แบบร่าง ${beos.filter((b) => b.status === 'draft').length}` : ''})</span>}</strong>
             {!beos ? <Spinner /> : beos.length === 0 ? <div className="muted small">ไม่พบเอกสาร</div> : beos.map((b) => (
               <div key={b.id} className="row between card flat" style={{ cursor: 'pointer' }} onClick={() => navigate(`/beo/${b.id}`)}>
                 <div>
-                  <div className="row"><strong>{b.event.name}</strong><StatusBadge status={b.status} /></div>
+                  <div className="row"><strong><EventTitle beo={b} /></strong><StatusBadge status={b.status} /></div>
                   <div className="small muted">{thaiDate(b.event.date, { short: true })} · {b.event.room} · {b.docNo ?? 'แบบร่าง'}</div>
                 </div>
                 <span className="num small">{money(b.totals.grandTotal)}</span>

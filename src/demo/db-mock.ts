@@ -4,6 +4,7 @@ import seed from '../seed/seed.json'
 import type { AppUser, Beo, Catalog, CustomerRecord, Settings } from '../lib/types'
 import { buddhistYear } from '../lib/thai'
 import { approverAfterSave } from '../lib/approver'
+import { jobCounts, validCustomerPhone, type CustomerEdit } from '../lib/customers'
 import { isRoomService } from '../lib/roomService'
 
 export const CATALOG_COLLECTIONS = ['categories', 'menuItems', 'menuSets', 'services', 'focRules'] as const
@@ -180,3 +181,30 @@ export async function listPendingBeos() {
 export async function deleteCustomer(id: string) { delete store.customers[id]; persist() }
 export async function deleteCustomers(ids: string[]) { ids.forEach((id) => delete store.customers[id]); persist() }
 export async function deleteBeos(ids: string[]) { ids.forEach((id) => delete store.beos[id]); persist() }
+
+export async function recountCustomers(phones: string[]) {
+  const counts = jobCounts(Object.values(store.beos))
+  let fixed = 0
+  for (const k of new Set(phones.map(phoneKey))) {
+    const c = store.customers[k]
+    if (c && c.beoCount !== (counts.get(k) ?? 0)) { c.beoCount = counts.get(k) ?? 0; fixed++ }
+  }
+  persist()
+  return fixed
+}
+export async function recountAllCustomers() { return recountCustomers(Object.keys(store.customers)) }
+export async function updateCustomer(oldId: string, edit: CustomerEdit, beoIds: string[] = []) {
+  const newId = phoneKey(edit.phone)
+  if (!validCustomerPhone(newId)) throw new Error('เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก')
+  const base = store.customers[oldId] ?? ({} as CustomerRecord)
+  const data = { ...base, name: edit.name.trim(), phone: newId, organization: edit.organization.trim(), updatedAt: Date.now() as never }
+  if (newId !== oldId) delete store.customers[oldId]
+  store.customers[newId] = data
+  for (const id of beoIds) {
+    const b = store.beos[id]
+    if (b) b.customer = { ...b.customer, name: data.name, phone: newId, organization: data.organization }
+  }
+  persist()
+  await recountCustomers([newId])
+  return newId
+}

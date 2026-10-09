@@ -11,6 +11,7 @@ import type {
 import { buddhistYear } from './thai'
 import { approverAfterSave } from './approver'
 import { isRoomService } from './roomService'
+import { jobCounts, validCustomerPhone, type CustomerEdit } from './customers'
 
 // ---------------- Catalog (menu, sets, services, FOC, settings) ----------------
 // Quota saver: the whole catalog (~170 docs) is cached in localStorage together with
@@ -195,6 +196,64 @@ export async function deleteCustomers(ids: string[]) {
 export async function listBeosByPhone(phone: string): Promise<Beo[]> {
   const snap = await getDocs(query(collection(db, 'beos'), where('customer.phone', '==', phoneKey(phone))))
   return snap.docs.map((d) => ({ ...(d.data() as Beo), id: d.id })).sort((a, b) => b.event.date.localeCompare(a.event.date))
+}
+
+/**
+ * Make the stored job count match the BEOs that really exist for these numbers
+ * (e.g. after a BEO was deleted). Returns how many customers were corrected.
+ */
+export async function recountCustomers(phones: string[]): Promise<number> {
+  let fixed = 0
+  for (const k of [...new Set(phones.map(phoneKey))].filter((x) => validCustomerPhone(x))) {
+    const ref = doc(db, 'customers', k)
+    const cur = await getDoc(ref)
+    if (!cur.exists()) continue
+    const n = jobCounts(await listBeosByPhone(k)).get(k) ?? 0
+    if (Number(cur.data().beoCount ?? 0) !== n) { await updateDoc(ref, { beoCount: n }); fixed++ }
+  }
+  return fixed
+}
+
+/** Admin: recount every customer from all BEOs (one read of the BEO collection). */
+export async function recountAllCustomers(): Promise<number> {
+  const [beos, customers] = await Promise.all([getDocs(beosCol), getDocs(collection(db, 'customers'))])
+  const counts = jobCounts(beos.docs.map((d) => d.data() as Beo))
+  const changes = customers.docs.filter((d) => Number(d.data().beoCount ?? 0) !== (counts.get(d.id) ?? 0))
+  for (let i = 0; i < changes.length; i += 450) {
+    const batch = writeBatch(db)
+    changes.slice(i, i + 450).forEach((d) => batch.update(d.ref, { beoCount: counts.get(d.id) ?? 0 }))
+    await batch.commit()
+  }
+  return changes.length
+}
+
+/**
+ * Admin: correct a customer's name / phone / organisation.
+ * The directory is keyed by phone, so a new phone number moves the record (merging into an
+ * existing record with that number). Optionally copies the change into the listed BEOs.
+ */
+export async function updateCustomer(oldId: string, edit: CustomerEdit, beoIds: string[] = []): Promise<string> {
+  const newId = phoneKey(edit.phone)
+  if (!validCustomerPhone(newId)) throw new Error('เบอร์โทรต้องเป็นตัวเลข 9–10 หลัก')
+  const oldRef = doc(db, 'customers', oldId)
+  const old = await getDoc(oldRef)
+  const base = old.exists() ? old.data() : {}
+  const data = { ...base, name: edit.name.trim(), phone: newId, organization: edit.organization.trim(), beoCount: Number(base.beoCount ?? 0), updatedAt: serverTimestamp() }
+  const ops: ((b: ReturnType<typeof writeBatch>) => void)[] = []
+  if (newId === oldId) ops.push((b) => b.set(oldRef, data))
+  else { ops.push((b) => b.set(doc(db, 'customers', newId), data)); ops.push((b) => b.delete(oldRef)) }
+  for (const id of beoIds) {
+    ops.push((b) => b.update(doc(db, 'beos', id), {
+      'customer.name': data.name, 'customer.phone': newId, 'customer.organization': data.organization, updatedAt: serverTimestamp(),
+    }))
+  }
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = writeBatch(db)
+    ops.slice(i, i + 400).forEach((op) => op(batch))
+    await batch.commit()
+  }
+  await recountCustomers([newId])
+  return newId
 }
 
 export async function findCustomer(phone: string): Promise<CustomerRecord | null> {

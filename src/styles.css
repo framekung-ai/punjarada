@@ -408,3 +408,6 @@ html { scroll-padding-top: 130px; scroll-padding-bottom: 96px; }
 .keypad .key.fn { font-size: 1rem; color: var(--ink-2); background: #f2f4f7; }
 .keypad .key:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 .stat .stat-sub { font-size: .55em; font-weight: 600; color: var(--ink-2); white-space: nowrap; }
+
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

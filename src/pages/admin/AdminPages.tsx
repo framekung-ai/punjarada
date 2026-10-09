@@ -3,7 +3,7 @@ import { Route, Routes, useNavigate } from 'react-router-dom'
 import type { Beo } from '../../lib/types'
 import { useCatalog } from '../../lib/catalog'
 import { ConciergeBell, Trash2, X } from 'lucide-react'
-import { deleteBeos, listBeosBetween, listDeleteRequests, listPendingBeos } from '../../lib/db'
+import { deleteBeos, listBeosBetween, listDeleteRequests, listPendingBeos, recountCustomers } from '../../lib/db'
 import { addDaysIso, money, num, thaiDate, timeRange, todayIso } from '../../lib/thai'
 import { MonthPicker, monthRange } from '../../components/MonthPicker'
 import { SortTh, useSort } from '../../components/SortTable'
@@ -253,6 +253,7 @@ function BeoList() {
     try {
       const ids = targets.map((b) => b.id!)
       await deleteBeos(ids)
+      void recountCustomers(targets.map((b) => b.customer.phone)).catch(() => {}) // keep customers' job counts right
       const gone = new Set(ids)
       setBeos((l) => (l ?? []).filter((b) => !gone.has(b.id!)))
       setSelected(new Set())
