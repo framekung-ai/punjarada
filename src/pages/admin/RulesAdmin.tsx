@@ -7,6 +7,8 @@ import { ruleMatches } from '../../lib/pricing'
 import { num } from '../../lib/thai'
 import { Field, Sheet , useConfirm } from '../../components/ui'
 import { TagsInput, useSaver } from './CatalogAdmin'
+import { DocFontSettings } from './DocFontSettings'
+import { docFont } from '../../lib/docFont'
 import { DEFAULT_NAME_PRESETS } from '../wizard/StepBasics'
 
 const GROUP_LABEL: Record<string, string> = { drinks: 'เครื่องดื่ม', music: 'นักดนตรี' }
@@ -216,6 +218,9 @@ export function SettingsAdmin() {
           <Field label="VAT (%)"><input className="input num" value={Math.round(s.vatRate * 1000) / 10} onChange={(e) => set('vatRate', (Number(e.target.value) || 0) / 100)} /></Field>
         </div>
       </section>
+      <DocFontSettings settings={s} catalog={catalog} onChange={(f) => set('docFont', f)}
+        dirty={JSON.stringify(docFont(s)) !== JSON.stringify(docFont(catalog.settings))}
+        onSave={() => void save(() => saveSettings(s), 'บันทึกขนาดตัวอักษรแล้ว')} />
       <section className="card stack">
         <div className="row between wrap">
           <h2>ห้องจัดงาน</h2>

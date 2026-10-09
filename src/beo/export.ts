@@ -48,14 +48,18 @@ const A4_H_MM = 297
 /** blocks that must not be cut in half (CSS px, relative to the document top) */
 interface Block { top: number; bottom: number; keepWithNext?: boolean; keepWithPrev?: boolean }
 
+/** on-screen scale of the node (the preview is shown shrunk with a CSS transform) */
+const scaleOf = (node: HTMLElement) => (node.getBoundingClientRect().width / node.offsetWidth) || 1
+
 function measureBlocks(node: HTMLElement): Block[] {
   const origin = node.getBoundingClientRect().top
+  const sc = scaleOf(node)
   const sel = '.bd-head, .bd-title, .bd-info, .bd-venue, .bd-table thead tr, .bd-table tbody tr, .bd-sum, .bd-sign'
   return [...node.querySelectorAll<HTMLElement>(sel)].map((el) => {
     const r = el.getBoundingClientRect()
     return {
-      top: r.top - origin,
-      bottom: r.bottom - origin,
+      top: (r.top - origin) / sc,
+      bottom: (r.bottom - origin) / sc,
       keepWithNext: el.classList.contains('bd-group') || el.parentElement?.tagName === 'THEAD', // section heading stays with its first row
       keepWithPrev: el.classList.contains('bd-sign'), // signatures stay with the totals
     }
@@ -96,9 +100,24 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((ok, fail) => { const i = new Image(); i.onload = () => ok(i); i.onerror = fail; i.src = src })
 }
 
-/** Renders the document once at print resolution, then lays it out on A4 pages without cutting rows. */
-export async function makePdf(node: HTMLElement, label = ''): Promise<Blob> {
-  const { jsPDF } = await import('jspdf')
+export interface PagePlan {
+  /** [from, to] in CSS px of the document, one entry per A4 page */
+  breaks: [number, number][]
+  /** content fits one page (possibly shrunk a little: `shrink` < 1) */
+  onePage: boolean
+  shrink: number
+  pageCssH: number
+  header?: { top: number; height: number; tableTop: number; tableBottom: number }
+}
+
+/**
+ * How the document will be laid out on A4. Shared by the PDF export and the font-size preview.
+ * - up to 15% longer than A4 → shrink a little onto one page instead of a near-empty page 2
+ * - BUT if Admin enlarged the fonts, never shrink (the text must stay at the chosen size):
+ *   the document is split between blocks instead — the totals, notes and signatures move together
+ */
+export function planPages(node: HTMLElement): PagePlan {
+  const sc = scaleOf(node)
   const blocks = measureBlocks(node)
   const cssW = node.offsetWidth
   const cssH = node.offsetHeight
@@ -108,11 +127,19 @@ export async function makePdf(node: HTMLElement, label = ''): Promise<Blob> {
   const origin = node.getBoundingClientRect().top
   const thead = node.querySelector('.bd-table thead')?.getBoundingClientRect()
   const tbody = node.querySelector('.bd-table tbody')?.getBoundingClientRect()
-  const header = thead && tbody ? { top: thead.top - origin, height: thead.height, tableTop: thead.bottom - origin, tableBottom: tbody.bottom - origin } : undefined
-  // up to 15% longer than A4 → shrink slightly onto one page instead of a near-empty second page
-  const FIT_ONE_PAGE = 1.15
-  const onePage = contentH <= pageCssH * FIT_ONE_PAGE
+  const header = thead && tbody ? { top: (thead.top - origin) / sc, height: thead.height / sc, tableTop: (thead.bottom - origin) / sc, tableBottom: (tbody.bottom - origin) / sc } : undefined
+  const fitOnePage = node.dataset.enlarged === '1' ? 1 : 1.15
+  const onePage = contentH <= pageCssH * fitOnePage
   const breaks: [number, number][] = onePage ? [[0, Math.max(contentH, Math.min(cssH, pageCssH))]] : pageBreaks(contentH, blocks, pageCssH, 40, 30, header)
+  const shrink = onePage ? Math.min(1, pageCssH / breaks[0][1]) : 1
+  return { breaks, onePage, shrink, pageCssH, header }
+}
+
+/** Renders the document once at print resolution, then lays it out on A4 pages without cutting rows. */
+export async function makePdf(node: HTMLElement, label = ''): Promise<Blob> {
+  const { jsPDF } = await import('jspdf')
+  const cssW = node.offsetWidth
+  const { breaks, onePage, pageCssH, header } = planPages(node)
   const img = await loadImage(await render(node, 'print'))
   const k = img.width / cssW // image pixels per CSS px
 

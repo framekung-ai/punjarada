@@ -411,3 +411,21 @@ html { scroll-padding-top: 130px; scroll-padding-bottom: 96px; }
 
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- settings: font size of the BEO ---------- */
+.font-grid { display: grid; gap: 16px; }
+@media (min-width: 1100px) { .font-grid { grid-template-columns: 340px 1fr; align-items: start; } }
+.font-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.font-row.strong { border: 2px solid var(--brand-soft); background: var(--brand-soft); }
+.font-row-label { font-weight: 700; }
+.font-ctl { display: inline-flex; align-items: center; gap: 4px; }
+.font-ctl .icon-btn { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 10px; background: #fff; display: inline-flex; align-items: center; justify-content: center; }
+.font-ctl .icon-btn:disabled { opacity: .35; }
+.font-val { min-width: 64px; text-align: center; font-weight: 700; font-size: 1.05rem; }
+.font-steps { grid-column: 1 / -1; display: flex; gap: 4px; }
+.font-steps span { flex: 1; height: 4px; border-radius: 2px; background: #e3e8ee; }
+.font-steps span.on { background: var(--brand); }
+.font-preview { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: #eef1f5; max-height: 80vh; overflow: auto; }
+.page-break-line { position: absolute; left: 0; right: 0; border-top: 3px dashed #d33; pointer-events: none; }
+.page-break-line span { position: absolute; right: 8px; top: -30px; background: #d33; color: #fff; font: 600 13px/1 'Sarabun', sans-serif; padding: 5px 10px; border-radius: 999px; }
+.font-grid > * { min-width: 0; }

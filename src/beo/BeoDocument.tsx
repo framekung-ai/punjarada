@@ -3,6 +3,10 @@ import type { Beo, BeoLine, Settings } from '../lib/types'
 import { discountLabel, lineAmount } from '../lib/pricing'
 import { lineName } from '../lib/cuisine'
 import { GUEST_ROOM, isRoomService } from '../lib/roomService'
+import { docFont, isEnlarged, zoneStyle } from '../lib/docFont'
+
+/** number columns grow with the table's font size so big numbers still fit */
+const colW = (px: number) => `calc(${px}px * var(--fz, 1))`
 import { bahtText, money, num, phoneFormat, thaiDate, timeRange, todayIso } from '../lib/thai'
 import './beo-document.css'
 
@@ -44,6 +48,9 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
   const freeCount = beo.lines.filter((l) => l.free && l.kind !== 'foc').length
   const ruleDiscount = beo.totals.ruleDiscount ?? Math.max(0, beo.totals.discount - freeValue)
   const rs = isRoomService(beo)
+  // font size per zone (Admin → ตั้งค่าทั่วไป → ขนาดตัวอักษรในเอกสาร)
+  const font = docFont(settings)
+  const enlarged = isEnlarged(font)
   const numbering = new Map([...food, ...services, ...foc].map((l, i) => [l.key, i + 1]))
 
   const lineRow = (l: BeoLine, amount = true) => {
@@ -55,7 +62,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
           <div className="bd-item">{lineName(l, beo.lines)}{l.kind === 'addon' && <span className="bd-tag">สิทธิแลกซื้อ</span>}{l.free && <span className="bd-tag free">ฟรี</span>}</div>
           {l.detail && <div className="bd-sub">{l.detail}</div>}
           {l.setItems && l.setItems.length > 0 && (
-            <ol className="bd-setlist">{l.setItems.map((n, i) => <li key={i}>{n}</li>)}</ol>
+            <ol className={`bd-setlist${font.items >= 1.3 ? ' one-col' : ''}`}>{l.setItems.map((n, i) => <li key={i}>{n}</li>)}</ol>
           )}
         </td>
         <td className="n">{num(l.qty)}</td>
@@ -67,11 +74,11 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
   }
 
   return (
-    <div className="beo-doc" ref={ref}>
+    <div className="beo-doc" ref={ref} data-enlarged={enlarged ? '1' : undefined}>
       {beo.status === 'draft' && <div className="bd-watermark">แบบร่าง</div>}
       {beo.status === 'cancelled' && <div className="bd-watermark red">ยกเลิก</div>}
       {beo.status === 'pending' && <div className="bd-watermark gold">รอยืนยัน</div>}
-      <header className="bd-head">
+      <header className="bd-head" style={zoneStyle(font.header)}>
         <img src="/logo-256.jpg" alt="" className="bd-logo" />
         <div className="bd-hotel">
           <div className="bd-hotel-name">{settings.hotelName}</div>
@@ -86,12 +93,12 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
         </div>
       </header>
 
-      <div className="bd-title">Banquet Event Order (BEO) / Function Sheet / รายละเอียดการจัดงาน</div>
+      <div className="bd-title" style={zoneStyle(font.header)}>Banquet Event Order (BEO) / Function Sheet / รายละเอียดการจัดงาน</div>
 
       {rs ? (
         // Room service: room number + order date/time; no organisation / address / coordinator / tables
         <>
-          <section className="bd-info">
+          <section className="bd-info" style={zoneStyle(font.info)}>
             <div className="bd-col">
               <div className="bd-colhead">ข้อมูลลูกค้า</div>
               <Row label="ชื่อลูกค้า" value={beo.customer.name} />
@@ -106,7 +113,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
               {s.guests > 0 && <Row label="จำนวน" value={`${num(s.guests)} ท่าน`} />}
             </div>
           </section>
-          <section className="bd-venue">
+          <section className="bd-venue" style={zoneStyle(font.info)}>
             <div><span>ห้อง</span><b>{GUEST_ROOM} {beo.roomNo}</b></div>
             <div><span>บริการ</span><b>{beo.eventType}</b></div>
             <div><span>จำนวน</span><b>{s.guests > 0 ? `${num(s.guests)} ท่าน` : '-'}</b></div>
@@ -114,7 +121,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
         </>
       ) : (
       <>
-      <section className="bd-info">
+      <section className="bd-info" style={zoneStyle(font.info)}>
           <div className="bd-col">
             <div className="bd-colhead">ข้อมูลลูกค้า</div>
             <Row label="ชื่อลูกค้า" value={beo.customer.name} />
@@ -135,7 +142,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
           </div>
         </section>
   
-        <section className="bd-venue">
+        <section className="bd-venue" style={zoneStyle(font.info)}>
           <div><span>ห้อง</span><b>{beo.event.room || '-'}</b></div>
           <div><span>รูปแบบ</span><b>{s.layout || '-'}</b></div>
           <div><span>จำนวนโต๊ะ</span><b>{seatText || '-'}</b></div>
@@ -143,9 +150,9 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
       </>
       )}
 
-      <table className="bd-table">
+      <table className="bd-table" style={zoneStyle(font.items)}>
         <thead>
-          <tr><th className="c" style={{ width: 40 }}>ลำดับ</th><th>รายการอาหาร เครื่องดื่ม และการบริการ</th><th className="n" style={{ width: 60 }}>จำนวน</th><th className="c" style={{ width: 56 }}>หน่วย</th><th className="n" style={{ width: 92 }}>ราคา</th><th className="n" style={{ width: 104 }}>รวม</th></tr>
+          <tr><th className="c" style={{ width: colW(40) }}>ลำดับ</th><th>รายการอาหาร เครื่องดื่ม และการบริการ</th><th className="n" style={{ width: colW(60) }}>จำนวน</th><th className="c" style={{ width: colW(56) }}>หน่วย</th><th className="n" style={{ width: colW(92) }}>ราคา</th><th className="n" style={{ width: colW(104) }}>รวม</th></tr>
         </thead>
         <tbody>
           {food.length > 0 && (
@@ -172,7 +179,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
         </tbody>
       </table>
 
-      <section className="bd-sum">
+      <section className="bd-sum" style={zoneStyle(font.summary)}>
         <div className="bd-sum-left">
           {beo.terms.length > 0 && (
             <>
@@ -197,7 +204,7 @@ export const BeoDocument = forwardRef<HTMLDivElement, { beo: Beo; settings: Sett
         </div>
       </section>
 
-      <section className="bd-sign">
+      <section className="bd-sign" style={zoneStyle(font.summary)}>
         {[['ผู้รับงาน', beo.salesName], ['ผู้อนุมัติ', approver], ['ลูกค้า', beo.customer.name]].map(([role, name]) => (
           <div key={role}>
             <div className="bd-line" />

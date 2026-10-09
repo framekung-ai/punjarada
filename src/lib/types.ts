@@ -145,6 +145,17 @@ export interface MealTemplate {
   slots: MealSlot[]
 }
 
+export interface DocFontScale {
+  /** หัวเอกสาร: ชื่อโรงแรม เลขที่ ชื่อเอกสาร */
+  header: number
+  /** ข้อมูลลูกค้า / ข้อมูลกิจกรรม / ห้อง */
+  info: number
+  /** ตารางรายการอาหารและบริการ */
+  items: number
+  /** สรุปยอด เงื่อนไข หมายเหตุ ผู้ลงนาม */
+  summary: number
+}
+
 export interface Settings {
   hotelName: string
   hotelNameEn: string
@@ -153,6 +164,8 @@ export interface Settings {
   vatRate: number
   /** active === false = ปิดใช้งาน (ไม่แสดงตอนสร้าง BEO) */
   rooms: { name: string; floor: string; active?: boolean }[]
+  /** ขนาดตัวอักษรในเอกสาร BEO แยกตามโซน (1 = ปกติ) */
+  docFont?: DocFontScale
   eventTypes: string[]
   tableLayouts: string[]
   remarkPresets: string[]
